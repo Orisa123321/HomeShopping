@@ -1,11 +1,6 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getFirestore } from "firebase/firestore"; // הוספנו את השורה הזו
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBYModqV2RyfPkDlhtj5titf2UQx3gpcSk",
   authDomain: "home-shopping-sharabi.firebaseapp.com",
@@ -16,6 +11,8 @@ const firebaseConfig = {
   measurementId: "G-QMW2Z4HQXJ"
 };
 
-// Initialize Firebase
+// אתחול Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// הפעלת מסד הנתונים וייצוא שלו החוצה כדי ש-App.jsx יוכל להשתמש בו
+export const db = getFirestore(app);
