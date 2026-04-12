@@ -273,3 +273,104 @@ html, body {
     padding: 14px 24px;
   }
 }
+
+/* --- פתרון הקפיצות והתזוזות --- */
+html {
+  /* שומר מקום קבוע לפס הגלילה כדי למנוע קפיצות רוחב */
+  scrollbar-gutter: stable;
+  overflow-y: scroll; /* כגיבוי לדפדפנים ישנים */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  background-color: #fcfcfc;
+  /* מונע גלילה ימינה/שמאלה שנוצרת לפעמים בטעות במובייל */
+  overflow-x: hidden; 
+}
+
+.app-container {
+  /* שימוש ברוחב קבוע למניעת תזוזות */
+  width: 100%;
+  max-width: 500px; /* צמצמתי מעט כדי שייראה טוב יותר במובייל */
+  margin: 0 auto;
+  padding: 20px 15px;
+  direction: rtl;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  /* מוודא שהקונטיינר עצמו לא משנה גודל */
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- מוודא שכל אלמנט תופס 100% מהרוחב שהוקצה לו בלי חריגות --- */
+.category-header, .add-form, .item-row {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.category-header {
+  /* מונע מהכותרת להתרחב מעבר לקונטיינר */
+  max-width: 100%;
+  text-align: right;
+  padding: 16px 20px;
+  background-color: #edf2f7;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #2d3748;
+}
+
+.category-items {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  /* מבטיח שהשורה לא תתרחב אם השם של המוצר ארוך */
+  overflow: hidden; 
+}
+
+/* שאר הקוד (צבעים, כפתורים וכו') נשאר זהה לקוד הקודם */
+.item-row.missing { background-color: #fff5f5; border-color: #fed7d7; }
+.item-row.partial { background-color: #fffff0; border-color: #fef08a; }
+.item-row.instock { background-color: #f0fff4; border-color: #c6f6d5; }
+.item-row.bought { background-color: #f8fafc; border-color: #e2e8f0; opacity: 0.7; }
+.item-row.bought .item-name { text-decoration: line-through; color: #a0aec0; }
+
+.item-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  flex: 1;
+  padding-left: 10px;
+  /* מונע מהטקסט "לדחוף" את הכפתורים החוצה */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.controls-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0; /* מונע מהכפתורים להתכווץ */
+}
+
+/* --- המשך הקוד שכתבנו קודם... --- */
