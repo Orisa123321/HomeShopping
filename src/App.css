@@ -372,5 +372,42 @@ body {
   gap: 8px;
   flex-shrink: 0; /* מונע מהכפתורים להתכווץ */
 }
+/* --- עיצוב המזווה המאורגן --- */
+.pantry-section {
+  margin-top: 30px;
+}
 
-/* --- המשך הקוד שכתבנו קודם... --- */
+.pantry-content {
+  padding: 10px 5px;
+  background-color: #f1f5f9;
+  border-radius: 0 0 12px 12px;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+}
+
+.pantry-sub-category {
+  margin-bottom: 20px;
+}
+
+.pantry-sub-title {
+  font-size: 14px;
+  color: #64748b;
+  margin: 10px 10px 5px 0;
+  border-right: 3px solid #cbd5e0;
+  padding-right: 8px;
+  font-weight: 700;
+}
+
+.empty-msg {
+  text-align: center;
+  color: #94a3b8;
+  padding: 20px;
+  font-style: italic;
+}
+
+.section-subtitle {
+  color: #1e293b;
+  font-size: 18px;
+  margin: 20px 0 10px 0;
+  padding-right: 5px;
+}
