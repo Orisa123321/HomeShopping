@@ -1,12 +1,21 @@
+/* --- תיקון קפיצות מסך למובייל --- */
+html, body {
+  overflow-x: hidden; /* מונע תזוזה ימינה/שמאלה של המסך */
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  background-color: #fcfcfc;
+}
+
 /* --- הגדרות כלליות --- */
 .app-container {
   max-width: 600px;
   margin: 0 auto;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; /* פונטים מודרניים יותר */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   padding: 15px;
   direction: rtl;
-  background-color: #fcfcfc; /* רקע עדין לאפליקציה */
-  min-height: 100vh;
+  min-height: 100dvh; /* dvh = מתאים את עצמו גם כששורת הכתובת בנייד נעלמת */
+  box-sizing: border-box;
 }
 
 .title {
@@ -16,28 +25,29 @@
   margin-bottom: 25px;
 }
 
-/* --- טופס הוספה (מותאם למובייל!) --- */
+/* --- טופס הוספה --- */
 .add-form {
   display: flex;
-  flex-direction: column; /* חשוב מאוד: מסדר את השדות אחד מתחת לשני */
+  flex-direction: column;
   gap: 12px;
   margin-bottom: 30px;
   background: #ffffff;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.04); /* צל עדין */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.04);
   border: 1px solid #edf2f7;
+  box-sizing: border-box;
 }
 
 .add-input {
-  width: 100%; /* תופס את כל הרוחב */
+  width: 100%;
   padding: 14px 16px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
-  font-size: 16px; /* גודל 16px מונע מהאייפון לעשות זום-אין אוטומטי כשמקלידים */
+  font-size: 16px;
   background-color: #f8fafc;
   transition: border-color 0.2s, background-color 0.2s;
-  box-sizing: border-box; /* מבטיח שהפאדינג לא חורג מהרוחב */
+  box-sizing: border-box;
 }
 
 .add-input:focus {
@@ -47,7 +57,7 @@
 }
 
 .add-btn {
-  width: 100%; /* כפתור ברוחב מלא - נוח ללחיצה עם האגודל */
+  width: 100%;
   padding: 14px;
   cursor: pointer;
   border-radius: 8px;
@@ -61,7 +71,7 @@
 }
 
 .add-btn:active {
-  background-color: #45a049; /* צבע קצת יותר כהה בלחיצה */
+  background-color: #45a049;
 }
 
 .help-text {
@@ -102,7 +112,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px 0 0 0; /* הורדתי ריווח צדדי כדי שהמוצרים יהיו ברוחב מלא מתחת לקטגוריה */
+  padding: 12px 0 0 0;
 }
 
 /* --- עיצוב כרטיסיות מוצרים --- */
@@ -112,38 +122,41 @@
   justify-content: space-between;
   padding: 16px;
   border: 1px solid transparent;
-  border-radius: 12px; /* פינות יותר עגולות */
+  border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  box-sizing: border-box;
+  width: 100%;
 }
 
-.item-row.missing {
-  background-color: #fff5f5;
-  border-color: #fed7d7;
+.item-row.missing { background-color: #fff5f5; border-color: #fed7d7; }
+.item-row.partial { background-color: #fffff0; border-color: #fef08a; }
+.item-row.instock { background-color: #f0fff4; border-color: #c6f6d5; }
+
+/* עיצוב מיוחד למוצר שכבר נקנה */
+.item-row.bought {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  opacity: 0.7;
 }
 
-.item-row.partial {
-  background-color: #fffff0;
-  border-color: #fef08a;
-}
-
-.item-row.instock {
-  background-color: #f0fff4;
-  border-color: #c6f6d5;
+.item-row.bought .item-name {
+  text-decoration: line-through; /* קו מחיקה */
+  color: #a0aec0;
 }
 
 .item-name {
-  font-size: 18px; /* קצת יותר גדול לקריאה קלה */
+  font-size: 18px;
   font-weight: 600;
   color: #2d3748;
   flex: 1;
   padding-left: 10px;
 }
 
-/* --- אזור כפתורי הכמויות --- */
+/* --- כפתורי פעולה --- */
 .controls-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px; /* ריווח קטן יותר בין "צריך" ל"יש" */
+  gap: 12px;
 }
 
 .control-group {
@@ -164,7 +177,7 @@
   display: flex;
   gap: 4px;
   align-items: center;
-  background-color: rgba(255,255,255,0.6); /* רקע עדין מסביב לכפתורים */
+  background-color: rgba(255,255,255,0.6);
   padding: 4px;
   border-radius: 20px;
 }
@@ -181,12 +194,11 @@
   align-items: center;
   justify-content: center;
   color: #4a5568;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .qty-btn:active {
   background-color: #edf2f7;
-  transform: scale(0.95); /* אפקט לחיצה קטן */
+  transform: scale(0.95);
 }
 
 .qty-display {
@@ -203,36 +215,61 @@
   background-color: #e2e8f0;
 }
 
-/* --- כפתור מחיקה --- */
+.action-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-right: 10px;
+}
+
 .delete-btn {
   background: none;
   border: none;
   font-size: 20px;
   cursor: pointer;
-  padding: 8px;
-  margin-right: 5px; /* קצת ריווח מהכמויות */
+  padding: 4px;
+  color: #e53e3e;
   opacity: 0.6;
-  transition: opacity 0.2s;
 }
 
-.delete-btn:hover, .delete-btn:active {
-  opacity: 1;
+.check-btn {
+  background: #e2e8f0;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
 }
 
-/* --- התאמה למסכים גדולים (מחשב) --- */
+.check-btn.active-check {
+  background: #4CAF50;
+  color: white;
+}
+
+/* כותרת לעגלה למטה */
+.cart-title {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 2px dashed #cbd5e0;
+  color: #4a5568;
+  font-size: 20px;
+  text-align: center;
+}
+
 @media (min-width: 600px) {
   .add-form {
-    flex-direction: row; /* מחזיר לשורה אחת במחשב */
+    flex-direction: row;
     align-items: flex-start;
   }
-  
   .add-btn {
     width: auto;
     margin-top: 0;
     padding: 14px 24px;
-  }
-  
-  .help-text {
-    text-align: right;
   }
 }
