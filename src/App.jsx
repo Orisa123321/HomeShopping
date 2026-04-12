@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from './firebaseConfig'; 
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import './App.css';
+import './App.css'; // או ShoppingList.css - ודא שזה תואם לשם הקובץ שלך
 
-function ShoppingList() {
+function App() {
   const [items, setItems] = useState([]);
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
+  // pantry_all סגור כברירת מחדל
   const [expandedCats, setExpandedCats] = useState({ pantry_all: false });
 
   useEffect(() => {
@@ -26,8 +27,9 @@ function ShoppingList() {
     return [...new Set(cats)];
   }, [items]);
 
-  const toggleCategory = (category) => {
-    setExpandedCats(prev => ({ ...prev, [category]: !prev[category] }));
+  // פונקציה חכמה לפתיחה/סגירה שעובדת עם מזהים ייחודיים
+  const toggleCategory = (categoryId) => {
+    setExpandedCats(prev => ({ ...prev, [categoryId]: !prev[categoryId] }));
   };
 
   const addItem = async (e) => {
@@ -46,7 +48,8 @@ function ShoppingList() {
       });
       setNewItemName('');
       setNewItemCategory('');
-      setExpandedCats(prev => ({ ...prev, [finalCategory]: true }));
+      // פותח אוטומטית את הקטגוריה ברשימת הקניות כדי שנראה מה הוספנו
+      setExpandedCats(prev => ({ ...prev, [`shop_${finalCategory}`]: true }));
     } catch (error) {
       console.error("שגיאה בהוספה:", error);
     }
@@ -89,13 +92,10 @@ function ShoppingList() {
     }
   };
 
-  // --- לוגיקת המיון והקיבוץ ---
-  
   const shoppingListItems = items.filter(item => item.current < item.target && !item.isBought);
   const inCartItems = items.filter(item => item.isBought);
   const inStockItems = items.filter(item => item.current >= item.target && !item.isBought);
 
-  // קיבוץ עבור רשימת הקניות
   const groupedShopping = useMemo(() => {
     return shoppingListItems.reduce((acc, item) => {
       if (!acc[item.category]) acc[item.category] = [];
@@ -104,7 +104,6 @@ function ShoppingList() {
     }, {});
   }, [shoppingListItems]);
 
-  // קיבוץ עבור המזווה (המלאי הקיים)
   const groupedInStock = useMemo(() => {
     return inStockItems.reduce((acc, item) => {
       if (!acc[item.category]) acc[item.category] = [];
@@ -113,7 +112,8 @@ function ShoppingList() {
     }, {});
   }, [inStockItems]);
 
-  const renderItemCard = (item) => (
+  // רכיב למוצר ברשימת הקניות (מלא)
+  const renderShoppingItem = (item) => (
     <div key={item.id} className={`item-row ${item.isBought ? 'bought' : (item.current === 0 ? 'missing' : 'partial')}`}>
       <span className="item-name">{item.name}</span>
       
@@ -138,10 +138,7 @@ function ShoppingList() {
       </div>
 
       <div className="action-btns">
-        <button 
-          onClick={() => toggleInCart(item.id, item.isBought)} 
-          className={`check-btn ${item.isBought ? 'active-check' : ''}`}
-        >
+        <button onClick={() => toggleInCart(item.id, item.isBought)} className={`check-btn ${item.isBought ? 'active-check' : ''}`}>
           {item.isBought ? '✓' : '🛒'}
         </button>
         <button onClick={() => deleteItem(item.id)} className="delete-btn">🗑️</button>
@@ -166,14 +163,15 @@ function ShoppingList() {
       <h3 className="section-subtitle">📝 צריך לקנות</h3>
       <div className="categories-list">
         {Object.keys(groupedShopping).map(category => {
-          const isExpanded = expandedCats[category] !== false;
+          const catId = `shop_${category}`; // מזהה ייחודי לקניות
+          const isExpanded = expandedCats[catId] !== false; // פתוח כברירת מחדל
           return (
             <div key={category} className="category-section">
-              <button className="category-header" onClick={() => toggleCategory(category)}>
+              <button className="category-header" onClick={() => toggleCategory(catId)}>
                 <span>{category} ({groupedShopping[category].length})</span>
                 <span>{isExpanded ? '▼' : '◄'}</span>
               </button>
-              {isExpanded && <div className="category-items">{groupedShopping[category].map(item => renderItemCard(item))}</div>}
+              {isExpanded && <div className="category-items">{groupedShopping[category].map(item => renderShoppingItem(item))}</div>}
             </div>
           );
         })}
@@ -186,11 +184,11 @@ function ShoppingList() {
             <h3 className="cart-title">🛒 כבר בעגלה ({inCartItems.length})</h3>
             <button onClick={completeShopping} className="empty-cart-btn">עדכן מלאי ✅</button>
           </div>
-          <div className="category-items">{inCartItems.map(item => renderItemCard(item))}</div>
+          <div className="category-items">{inCartItems.map(item => renderShoppingItem(item))}</div>
         </>
       )}
 
-      {/* --- המזווה (מלאי קיים) בחלוקה לקטגוריות --- */}
+      {/* --- המזווה (מלאי קיים) --- */}
       <div className="pantry-section">
         <button className="category-header pantry-toggle" onClick={() => toggleCategory('pantry_all')}>
           <span>📦 מוצרים שבמלאי ({inStockItems.length})</span>
@@ -199,34 +197,47 @@ function ShoppingList() {
         
         {expandedCats['pantry_all'] && (
           <div className="pantry-content">
-            {Object.keys(groupedInStock).map(category => (
-              <div key={`pantry-${category}`} className="pantry-sub-category">
-                <h4 className="pantry-sub-title">{category}</h4>
-                <div className="category-items">
-                  {groupedInStock[category].map(item => (
-                    <div key={item.id} className="item-row instock">
-                      <span className="item-name">{item.name}</span>
-                      <div className="controls-wrapper">
-                        <div className="control-group">
-                          <span className="control-label">בבית</span>
-                          <div className="buttons-row">
-                            <button onClick={() => updateQuantity(item.id, item.current, 'current', 1)} className="qty-btn">+</button>
-                            <span className="qty-display">{item.current}</span>
-                            <button onClick={() => updateQuantity(item.id, item.current, 'current', -1)} className="qty-btn">-</button>
+            {Object.keys(groupedInStock).map(category => {
+              const catId = `pantry_${category}`; // מזהה ייחודי למזווה
+              const isExpanded = expandedCats[catId] === true; // סגור כברירת מחדל
+
+              return (
+                <div key={catId} className="pantry-sub-category">
+                  {/* כפתור פתיחה/סגירה לתת-קטגוריה */}
+                  <button className="pantry-sub-header" onClick={() => toggleCategory(catId)}>
+                    <span>{category}</span>
+                    <span>{isExpanded ? '▼' : '◄'}</span>
+                  </button>
+                  
+                  {isExpanded && (
+                    <div className="category-items">
+                      {groupedInStock[category].map(item => (
+                        <div key={item.id} className="item-row instock">
+                          <span className="item-name">{item.name}</span>
+                          <div className="controls-wrapper">
+                            <div className="control-group">
+                              <span className="control-label">בבית</span>
+                              <div className="buttons-row">
+                                <button onClick={() => updateQuantity(item.id, item.current, 'current', 1)} className="qty-btn">+</button>
+                                <span className="qty-display">{item.current}</span>
+                                <button onClick={() => updateQuantity(item.id, item.current, 'current', -1)} className="qty-btn">-</button>
+                              </div>
+                            </div>
                           </div>
+                          <button onClick={() => deleteItem(item.id)} className="delete-btn">🗑️</button>
                         </div>
-                      </div>
-                      <button onClick={() => deleteItem(item.id)} className="delete-btn">🗑️</button>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+      
     </div>
   );
 }
 
-export default ShoppingList;
+export default App;
