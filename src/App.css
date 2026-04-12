@@ -411,3 +411,30 @@ body {
   margin: 20px 0 10px 0;
   padding-right: 5px;
 }
+
+/* --- כפתורים מתקפלים בתוך המזווה --- */
+.pantry-sub-header {
+  width: 100%;
+  text-align: right;
+  padding: 10px 15px;
+  background-color: transparent;
+  border: none;
+  border-bottom: 2px solid #e2e8f0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  transition: color 0.2s;
+}
+
+.pantry-sub-header:active {
+  color: #1e293b;
+}
+
+.pantry-sub-category {
+  margin-bottom: 15px;
+}
