@@ -1,190 +1,238 @@
+/* --- הגדרות כלליות --- */
 .app-container {
   max-width: 600px;
   margin: 0 auto;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; /* פונטים מודרניים יותר */
   padding: 15px;
   direction: rtl;
+  background-color: #fcfcfc; /* רקע עדין לאפליקציה */
+  min-height: 100vh;
 }
 
 .title {
   text-align: center;
-  color: #333;
+  color: #2c3e50;
+  font-size: 24px;
+  margin-bottom: 25px;
 }
 
-/* טופס הוספה מעודכן */
+/* --- טופס הוספה (מותאם למובייל!) --- */
 .add-form {
   display: flex;
-  flex-wrap: wrap; /* כדי שהטופס יסתדר טוב גם במסכים קטנים */
-  gap: 10px;
-  margin-bottom: 25px;
-  background: #f9f9f9;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  flex-direction: column; /* חשוב מאוד: מסדר את השדות אחד מתחת לשני */
+  gap: 12px;
+  margin-bottom: 30px;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.04); /* צל עדין */
+  border: 1px solid #edf2f7;
 }
 
 .add-input {
-  flex: 1;
-  min-width: 120px;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 16px;
+  width: 100%; /* תופס את כל הרוחב */
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 16px; /* גודל 16px מונע מהאייפון לעשות זום-אין אוטומטי כשמקלידים */
+  background-color: #f8fafc;
+  transition: border-color 0.2s, background-color 0.2s;
+  box-sizing: border-box; /* מבטיח שהפאדינג לא חורג מהרוחב */
+}
+
+.add-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  background-color: #ffffff;
 }
 
 .add-btn {
-  padding: 10px 20px;
+  width: 100%; /* כפתור ברוחב מלא - נוח ללחיצה עם האגודל */
+  padding: 14px;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   background-color: #4CAF50;
   color: white;
   border: none;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 5px;
+  transition: background-color 0.2s;
 }
 
-/* קטגוריות */
+.add-btn:active {
+  background-color: #45a049; /* צבע קצת יותר כהה בלחיצה */
+}
+
+.help-text {
+  width: 100%;
+  font-size: 13px;
+  color: #718096;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* --- קטגוריות --- */
 .category-section {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 .category-header {
   width: 100%;
   text-align: right;
-  padding: 12px 15px;
-  background-color: #e0e0e0;
+  padding: 16px 20px;
+  background-color: #edf2f7;
   border: none;
-  border-radius: 8px;
-  font-size: 18px;
-  font-weight: bold;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #333;
+  color: #2d3748;
   transition: background-color 0.2s;
 }
 
-.category-header:hover {
-  background-color: #d5d5d5;
+.category-header:active {
+  background-color: #e2e8f0;
 }
 
 .category-items {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px 5px 0 5px;
+  gap: 12px;
+  padding: 12px 0 0 0; /* הורדתי ריווח צדדי כדי שהמוצרים יהיו ברוחב מלא מתחת לקטגוריה */
 }
 
-/* עיצוב מוצרים וצבעים */
+/* --- עיצוב כרטיסיות מוצרים --- */
 .item-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 16px;
+  border: 1px solid transparent;
+  border-radius: 12px; /* פינות יותר עגולות */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
 }
 
 .item-row.missing {
-  background-color: #fff0f0; /* אדמדם - חסר לגמרי */
-  border-color: #ffcdd2;
+  background-color: #fff5f5;
+  border-color: #fed7d7;
 }
 
 .item-row.partial {
-  background-color: #fffde7; /* צהבהב - יש, אבל לא מספיק */
-  border-color: #fff59d;
+  background-color: #fffff0;
+  border-color: #fef08a;
 }
 
 .item-row.instock {
-  background-color: #f3fcf3; /* ירקרק - יש מספיק */
-  border-color: #c8e6c9;
+  background-color: #f0fff4;
+  border-color: #c6f6d5;
 }
 
 .item-name {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 18px; /* קצת יותר גדול לקריאה קלה */
+  font-weight: 600;
+  color: #2d3748;
   flex: 1;
+  padding-left: 10px;
 }
 
+/* --- אזור כפתורי הכמויות --- */
 .controls-wrapper {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-left: 15px;
+  gap: 12px; /* ריווח קטן יותר בין "צריך" ל"יש" */
 }
 
 .control-group {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .control-label {
-  font-size: 13px;
-  color: #555;
-  width: 50px;
+  font-size: 11px;
+  color: #718096;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .buttons-row {
   display: flex;
-  gap: 5px;
+  gap: 4px;
   align-items: center;
+  background-color: rgba(255,255,255,0.6); /* רקע עדין מסביב לכפתורים */
+  padding: 4px;
+  border-radius: 20px;
 }
 
 .qty-btn {
-  width: 28px;
-  height: 28px;
-  font-size: 16px;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
   cursor: pointer;
   border-radius: 50%;
-  border: 1px solid #aaa;
-  background-color: #fff;
+  border: 1px solid #cbd5e0;
+  background-color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #333;
+  color: #4a5568;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .qty-btn:active {
-  background-color: #eee;
+  background-color: #edf2f7;
+  transform: scale(0.95); /* אפקט לחיצה קטן */
 }
 
 .qty-display {
-  width: 20px;
+  width: 24px;
   text-align: center;
-  font-weight: bold;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #2d3748;
 }
 
 .divider {
   width: 1px;
-  height: 25px;
-  background-color: #ccc;
+  height: 40px;
+  background-color: #e2e8f0;
 }
 
+/* --- כפתור מחיקה --- */
 .delete-btn {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
-  padding: 5px;
-  color: #888;
-  border-radius: 4px;
+  padding: 8px;
+  margin-right: 5px; /* קצת ריווח מהכמויות */
+  opacity: 0.6;
+  transition: opacity 0.2s;
 }
 
-.delete-btn:hover {
-  background-color: #ffebee;
+.delete-btn:hover, .delete-btn:active {
+  opacity: 1;
 }
 
-/* עיצוב לטקסט העזרה של הקטגוריות */
-.help-text {
-  width: 100%;
-  font-size: 13px;
-  color: #666;
-  margin-top: 5px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+/* --- התאמה למסכים גדולים (מחשב) --- */
+@media (min-width: 600px) {
+  .add-form {
+    flex-direction: row; /* מחזיר לשורה אחת במחשב */
+    align-items: flex-start;
+  }
+  
+  .add-btn {
+    width: auto;
+    margin-top: 0;
+    padding: 14px 24px;
+  }
+  
+  .help-text {
+    text-align: right;
+  }
 }
