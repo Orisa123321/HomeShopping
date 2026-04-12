@@ -1,241 +1,214 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db } from './firebaseConfig'; 
+import { db, auth, googleProvider } from './firebaseConfig'; 
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import './App.css'; // או ShoppingList.css - ודא שזה תואם לשם הקובץ שלך
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { motion, AnimatePresence } from 'framer-motion';
+import './App.css';
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [items, setItems] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [activeStore, setActiveStore] = useState('סופרמרקט');
+  
+  // ניהול קטגוריות סגורות
+  const [collapsedCats, setCollapsedCats] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // טופס
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
-  // pantry_all סגור כברירת מחדל
-  const [expandedCats, setExpandedCats] = useState({ pantry_all: false });
+  const [newItemTarget, setNewItemTarget] = useState(1);
 
   useEffect(() => {
-    const q = query(collection(db, 'groceries'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const itemsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setItems(itemsData);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoadingAuth(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const existingCategories = useMemo(() => {
-    const cats = items.map(item => item.category);
-    return [...new Set(cats)];
-  }, [items]);
+  useEffect(() => {
+    if (!user) return;
+    onSnapshot(query(collection(db, 'groceries'), orderBy('createdAt', 'desc')), (snap) => {
+      setItems(snap.docs.map(d => ({id: d.id, ...d.data()})));
+    });
+    onSnapshot(collection(db, 'stores'), (snap) => {
+      const sData = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      if (sData.length === 0) {
+        addDoc(collection(db, 'stores'), { name: 'סופרמרקט', createdAt: new Date() });
+      } else {
+        setStores(sData.sort((a, b) => a.createdAt - b.createdAt));
+      }
+    });
+  }, [user]);
 
-  // פונקציה חכמה לפתיחה/סגירה שעובדת עם מזהים ייחודיים
-  const toggleCategory = (categoryId) => {
-    setExpandedCats(prev => ({ ...prev, [categoryId]: !prev[categoryId] }));
+  const toggleCat = (catId) => {
+    setCollapsedCats(prev => ({ ...prev, [catId]: !prev[catId] }));
   };
 
   const addItem = async (e) => {
-    e.preventDefault();
-    if (newItemName.trim() === '') return;
-    const finalCategory = newItemCategory.trim() || 'כללי';
-
+    if (e) e.preventDefault();
+    if (!newItemName.trim()) return;
+    const finalCat = newItemCategory.trim() || 'כללי';
     try {
       await addDoc(collection(db, 'groceries'), {
-        name: newItemName,
-        category: finalCategory,
-        current: 1,
-        target: 1,
-        isBought: false,
-        createdAt: new Date()
+        name: newItemName, category: finalCat, store: activeStore,
+        current: 0, target: newItemTarget,
+        note: '', isBought: false, createdAt: new Date()
       });
-      setNewItemName('');
-      setNewItemCategory('');
-      // פותח אוטומטית את הקטגוריה ברשימת הקניות כדי שנראה מה הוספנו
-      setExpandedCats(prev => ({ ...prev, [`shop_${finalCategory}`]: true }));
-    } catch (error) {
-      console.error("שגיאה בהוספה:", error);
-    }
+      setNewItemName(''); setNewItemCategory(''); setNewItemTarget(1);
+    } catch (e) { console.error(e); }
   };
 
-  const updateQuantity = async (id, currentVal, fieldType, amountChange) => {
-    const newValue = Math.max(0, currentVal + amountChange);
-    try {
-      await updateDoc(doc(db, 'groceries', id), { [fieldType]: newValue });
-    } catch (error) {}
+  const updateQuantity = async (id, val, field, diff) => {
+    await updateDoc(doc(db, 'groceries', id), { [field]: Math.max(0, val + diff) });
   };
 
-  const toggleInCart = async (id, currentStatus) => {
-    try {
-      await updateDoc(doc(db, 'groceries', id), { isBought: !currentStatus });
-    } catch (error) {}
-  };
+  const renderItem = (item) => (
+    <motion.div layout initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} key={item.id} className="item-card">
+      <div className="item-main">
+        <span className="item-name">{item.name}</span>
+        <input 
+          type="text" className="item-note" placeholder="הוסף הערה..." 
+          defaultValue={item.note} onBlur={e => updateDoc(doc(db, 'groceries', item.id), { note: e.target.value })} 
+        />
+      </div>
 
-  const completeShopping = async () => {
-    const itemsInCart = items.filter(item => item.isBought);
-    if (itemsInCart.length === 0) return;
-
-    if (window.confirm(`לעדכן את המלאי בבית עבור ${itemsInCart.length} מוצרים שנקנו?`)) {
-      try {
-        await Promise.all(
-          itemsInCart.map(item => 
-            updateDoc(doc(db, 'groceries', item.id), {
-              current: item.target,
-              isBought: false
-            })
-          )
-        );
-      } catch (error) {}
-    }
-  };
-
-  const deleteItem = async (id) => {
-    if (window.confirm('למחוק את המוצר מהמערכת לצמיתות?')) {
-      try { await deleteDoc(doc(db, 'groceries', id)); } catch (error) {}
-    }
-  };
-
-  const shoppingListItems = items.filter(item => item.current < item.target && !item.isBought);
-  const inCartItems = items.filter(item => item.isBought);
-  const inStockItems = items.filter(item => item.current >= item.target && !item.isBought);
-
-  const groupedShopping = useMemo(() => {
-    return shoppingListItems.reduce((acc, item) => {
-      if (!acc[item.category]) acc[item.category] = [];
-      acc[item.category].push(item);
-      return acc;
-    }, {});
-  }, [shoppingListItems]);
-
-  const groupedInStock = useMemo(() => {
-    return inStockItems.reduce((acc, item) => {
-      if (!acc[item.category]) acc[item.category] = [];
-      acc[item.category].push(item);
-      return acc;
-    }, {});
-  }, [inStockItems]);
-
-  // רכיב למוצר ברשימת הקניות (מלא)
-  const renderShoppingItem = (item) => (
-    <div key={item.id} className={`item-row ${item.isBought ? 'bought' : (item.current === 0 ? 'missing' : 'partial')}`}>
-      <span className="item-name">{item.name}</span>
-      
-      <div className="controls-wrapper">
-        <div className="control-group">
-          <span className="control-label">בבית</span>
-          <div className="buttons-row">
-            <button onClick={() => updateQuantity(item.id, item.current, 'current', 1)} className="qty-btn">+</button>
-            <span className="qty-display">{item.current}</span>
-            <button onClick={() => updateQuantity(item.id, item.current, 'current', -1)} className="qty-btn">-</button>
-          </div>
+      <div className="qty-stack">
+        <div className="qty-row">
+          <span className="qty-label">בבית</span>
+          <button onClick={() => updateQuantity(item.id, item.current, 'current', -1)} className="btn-mini"><i className="fas fa-minus"></i></button>
+          <span className="qty-val">{item.current}</span>
+          <button onClick={() => updateQuantity(item.id, item.current, 'current', 1)} className="btn-mini"><i className="fas fa-plus"></i></button>
         </div>
-        <div className="divider"></div>
-        <div className="control-group">
-          <span className="control-label">צריך</span>
-          <div className="buttons-row">
-            <button onClick={() => updateQuantity(item.id, item.target, 'target', 1)} className="qty-btn">+</button>
-            <span className="qty-display">{item.target}</span>
-            <button onClick={() => updateQuantity(item.id, item.target, 'target', -1)} className="qty-btn">-</button>
-          </div>
+        <div className="qty-row">
+          <span className="qty-label">צריך</span>
+          <button onClick={() => updateQuantity(item.id, item.target, 'target', -1)} className="btn-mini"><i className="fas fa-minus"></i></button>
+          <span className="qty-val">{item.target}</span>
+          <button onClick={() => updateQuantity(item.id, item.target, 'target', 1)} className="btn-mini"><i className="fas fa-plus"></i></button>
         </div>
       </div>
 
-      <div className="action-btns">
-        <button onClick={() => toggleInCart(item.id, item.isBought)} className={`check-btn ${item.isBought ? 'active-check' : ''}`}>
-          {item.isBought ? '✓' : '🛒'}
+      <div style={{display:'flex', gap:8, alignItems:'center'}}>
+        <button onClick={() => updateDoc(doc(db, 'groceries', item.id), { isBought: !item.isBought })} className={`cart-btn ${item.isBought ? 'active' : ''}`}>
+          <i className={item.isBought ? "fas fa-check" : "fas fa-shopping-basket"}></i>
         </button>
-        <button onClick={() => deleteItem(item.id)} className="delete-btn">🗑️</button>
+        <button onClick={() => window.confirm('למחוק?') && deleteDoc(doc(db, 'groceries', item.id))} style={{background:'none', border:'none', color:'#ccc', cursor:'pointer', padding:5}}>
+          <i className="fas fa-trash-alt"></i>
+        </button>
       </div>
-    </div>
+    </motion.div>
   );
+
+  const filtered = items.filter(i => (i.store === activeStore) && 
+    (i.name.toLowerCase().includes(searchTerm.toLowerCase()) || i.category.toLowerCase().includes(searchTerm.toLowerCase())));
+
+  const shoppingList = filtered.filter(i => i.current < i.target && !i.isBought);
+  const inCart = filtered.filter(i => i.isBought);
+  const inStock = filtered.filter(i => i.current >= i.target && !i.isBought);
+
+  const groupItems = (list) => list.reduce((acc, i) => {
+    if (!acc[i.category]) acc[i.category] = [];
+    acc[i.category].push(i);
+    return acc;
+  }, {});
+
+  if (loadingAuth) return <div className="app-container">טוען...</div>;
+  if (!user) return <div className="app-container" style={{textAlign:'center', marginTop:100}}><button className="store-tab active" onClick={() => signInWithPopup(auth, googleProvider)}>התחבר עם גוגל</button></div>;
 
   return (
     <div className="app-container">
-      <h2 className="title">🏠 המזווה החכם שלי</h2>
-      
-      <form onSubmit={addItem} className="add-form">
-        <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="מוצר חדש למזווה..." className="add-input" />
-        <input type="text" list="categories-list" value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} placeholder="קטגוריה..." className="add-input" />
-        <datalist id="categories-list">
-          {existingCategories.map(cat => <option key={cat} value={cat} />)}
-        </datalist>
-        <button type="submit" className="add-btn">הוסף למלאי</button>
-      </form>
+      <header className="user-header">
+        <img src={user.photoURL} className="user-avatar" alt="p" referrerPolicy="no-referrer" />
+        <div style={{display:'flex', gap:12, alignItems:'center'}}>
+          <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>{theme === 'light' ? '🌙' : '☀️'}</button>
+          <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>⚙️</button>
+          <button onClick={() => signOut(auth)} style={{background:'none', border:'none', color:'var(--text-light)', fontSize:12, fontWeight:'bold', cursor:'pointer'}}>התנתק</button>
+        </div>
+      </header>
 
-      {/* --- צריך לקנות --- */}
-      <h3 className="section-subtitle">📝 צריך לקנות</h3>
-      <div className="categories-list">
-        {Object.keys(groupedShopping).map(category => {
-          const catId = `shop_${category}`; // מזהה ייחודי לקניות
-          const isExpanded = expandedCats[catId] !== false; // פתוח כברירת מחדל
+      <nav className="store-tabs">
+        {stores.map(s => (
+          <button key={s.id} className={`store-tab ${activeStore === s.name ? 'active' : ''}`} onClick={() => setActiveStore(s.name)}>{s.name}</button>
+        ))}
+        <button className="store-tab" onClick={() => {const n = prompt("חנות חדשה:"); if (n) addDoc(collection(db, 'stores'), { name: n, createdAt: new Date() });}}>+</button>
+      </nav>
+
+      {isSettingsOpen && (
+        <div className="item-card" style={{flexDirection:'column', alignItems:'flex-start'}}>
+          <h4 style={{margin:'0 0 10px'}}>⚙️ ניהול חנויות</h4>
+          {stores.map(s => <div key={s.id} style={{display:'flex', justifyContent:'space-between', width:'100%', marginBottom:8}}><span>{s.name}</span>{s.name !== 'סופרמרקט' && <button onClick={() => deleteDoc(doc(db, 'stores', s.id))} style={{color:'red', border:'none', background:'none', cursor:'pointer'}}>מחק</button>}</div>)}
+        </div>
+      )}
+
+      <input className="f-input" style={{width:'100%', boxSizing:'border-box', marginBottom:15}} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={`🔍 חפש ב${activeStore}...`} />
+
+      <section>
+        <h2 style={{fontSize:20, margin:'20px 0 10px'}}>📝 צריך לקנות ({shoppingList.length})</h2>
+        {Object.entries(groupItems(shoppingList)).map(([cat, list]) => {
+          const catId = `shop_${cat}`;
           return (
-            <div key={category} className="category-section">
-              <button className="category-header" onClick={() => toggleCategory(catId)}>
-                <span>{category} ({groupedShopping[category].length})</span>
-                <span>{isExpanded ? '▼' : '◄'}</span>
-              </button>
-              {isExpanded && <div className="category-items">{groupedShopping[category].map(item => renderShoppingItem(item))}</div>}
+            <div key={cat}>
+              <div className="category-header" onClick={() => toggleCat(catId)}>
+                <span>{cat} ({list.length})</span>
+                <i className={`fas fa-chevron-${collapsedCats[catId] ? 'left' : 'down'}`}></i>
+              </div>
+              <AnimatePresence>
+                {!collapsedCats[catId] && (
+                  <motion.div initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} style={{overflow:'hidden'}}>
+                    {list.map(renderItem)}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           );
         })}
-      </div>
 
-      {/* --- העגלה בסופר --- */}
-      {inCartItems.length > 0 && (
-        <>
-          <div className="cart-header">
-            <h3 className="cart-title">🛒 כבר בעגלה ({inCartItems.length})</h3>
-            <button onClick={completeShopping} className="empty-cart-btn">עדכן מלאי ✅</button>
-          </div>
-          <div className="category-items">{inCartItems.map(item => renderShoppingItem(item))}</div>
-        </>
-      )}
-
-      {/* --- המזווה (מלאי קיים) --- */}
-      <div className="pantry-section">
-        <button className="category-header pantry-toggle" onClick={() => toggleCategory('pantry_all')}>
-          <span>📦 מוצרים שבמלאי ({inStockItems.length})</span>
-          <span>{expandedCats['pantry_all'] ? '▼' : '◄'}</span>
-        </button>
-        
-        {expandedCats['pantry_all'] && (
-          <div className="pantry-content">
-            {Object.keys(groupedInStock).map(category => {
-              const catId = `pantry_${category}`; // מזהה ייחודי למזווה
-              const isExpanded = expandedCats[catId] === true; // סגור כברירת מחדל
-
-              return (
-                <div key={catId} className="pantry-sub-category">
-                  {/* כפתור פתיחה/סגירה לתת-קטגוריה */}
-                  <button className="pantry-sub-header" onClick={() => toggleCategory(catId)}>
-                    <span>{category}</span>
-                    <span>{isExpanded ? '▼' : '◄'}</span>
-                  </button>
-                  
-                  {isExpanded && (
-                    <div className="category-items">
-                      {groupedInStock[category].map(item => (
-                        <div key={item.id} className="item-row instock">
-                          <span className="item-name">{item.name}</span>
-                          <div className="controls-wrapper">
-                            <div className="control-group">
-                              <span className="control-label">בבית</span>
-                              <div className="buttons-row">
-                                <button onClick={() => updateQuantity(item.id, item.current, 'current', 1)} className="qty-btn">+</button>
-                                <span className="qty-display">{item.current}</span>
-                                <button onClick={() => updateQuantity(item.id, item.current, 'current', -1)} className="qty-btn">-</button>
-                              </div>
-                            </div>
-                          </div>
-                          <button onClick={() => deleteItem(item.id)} className="delete-btn">🗑️</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {inCart.length > 0 && (
+          <div style={{marginTop:30}}>
+            <h2 style={{fontSize:20, marginBottom:10}}>🛒 בעגלה ({inCart.length})</h2>
+            <AnimatePresence>{inCart.map(renderItem)}</AnimatePresence>
+            <button className="store-tab active" style={{width:'100%', marginTop:10, borderRadius:12, padding:12}} onClick={() => inCart.forEach(i => updateDoc(doc(db, 'groceries', i.id), { current: i.target, isBought: false }))}>עדכן מלאי סופי ✅</button>
           </div>
         )}
-      </div>
-      
+
+        <h2 style={{fontSize:20, marginTop:40, opacity:0.4, marginBottom:10}}>📦 במזווה ({inStock.length})</h2>
+        {Object.entries(groupItems(inStock)).map(([cat, list]) => {
+          const catId = `pantry_${cat}`;
+          return (
+            <div key={cat}>
+              <div className="category-header" onClick={() => toggleCat(catId)}>
+                <span>{cat} ({list.length})</span>
+                <i className={`fas fa-chevron-${collapsedCats[catId] ? 'left' : 'down'}`}></i>
+              </div>
+              <AnimatePresence>
+                {!collapsedCats[catId] && (
+                  <motion.div initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} style={{overflow:'hidden', opacity:0.7}}>
+                    {list.map(renderItem)}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </section>
+
+      {/* טופס הוספה צף - יישור סופי */}
+      <form className="floating-form" onSubmit={addItem}>
+        <input className="f-input" value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="מה להוסיף?" />
+        <input className="f-input" style={{flex:0.6}} value={newItemCategory} onChange={e => setNewItemCategory(e.target.value)} placeholder="קטגוריה" />
+        <input className="f-input qty-add-input" type="number" value={newItemTarget} onChange={e => setNewItemTarget(Number(e.target.value))} />
+        <button className="f-btn" type="submit"><i className="fas fa-plus"></i></button>
+      </form>
     </div>
   );
 }

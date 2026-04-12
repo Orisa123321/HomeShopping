@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore"; // הוספנו את השורה הזו
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore"; // הוספנו את ההפעלה של האופליין
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBYModqV2RyfPkDlhtj5titf2UQx3gpcSk",
@@ -11,8 +12,20 @@ const firebaseConfig = {
   measurementId: "G-QMW2Z4HQXJ"
 };
 
-// אתחול Firebase
 const app = initializeApp(firebaseConfig);
-
-// הפעלת מסד הנתונים וייצוא שלו החוצה כדי ש-App.jsx יוכל להשתמש בו
 export const db = getFirestore(app);
+
+// --- הפעלת מצב לא מקוון (Offline Mode) ---
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code == 'failed-precondition') {
+        // יכול לקרות אם יש כמה חלוניות פתוחות במקביל, לא נורא
+        console.log("לא ניתן להפעיל אופליין בכמה חלונות במקביל");
+    } else if (err.code == 'unimplemented') {
+        // הדפדפן לא תומך
+        console.log("הדפדפן לא תומך במצב לא מקוון");
+    }
+});
+
+// הפעלת שירותי ההתחברות
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
