@@ -7,7 +7,7 @@ function ShoppingList() {
   const [items, setItems] = useState([]);
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
-  const [expandedCats, setExpandedCats] = useState({});
+  const [expandedCats, setExpandedCats] = useState({ pantry_all: false });
 
   useEffect(() => {
     const q = query(collection(db, 'groceries'), orderBy('createdAt', 'desc'));
@@ -65,7 +65,6 @@ function ShoppingList() {
     } catch (error) {}
   };
 
-  // הפונקציה החשובה ביותר: מעדכנת את המלאי בבית לפי מה שנקנה בעגלה
   const completeShopping = async () => {
     const itemsInCart = items.filter(item => item.isBought);
     if (itemsInCart.length === 0) return;
@@ -75,14 +74,12 @@ function ShoppingList() {
         await Promise.all(
           itemsInCart.map(item => 
             updateDoc(doc(db, 'groceries', item.id), {
-              current: item.target, // עכשיו המלאי בבית מלא
-              isBought: false       // המוצר יוצא מהעגלה וחוזר למזווה
+              current: item.target,
+              isBought: false
             })
           )
         );
-      } catch (error) {
-        console.error("שגיאה בעדכון המלאי:", error);
-      }
+      } catch (error) {}
     }
   };
 
@@ -92,11 +89,13 @@ function ShoppingList() {
     }
   };
 
-  // חלוקת המוצרים ל-3 מצבים
+  // --- לוגיקת המיון והקיבוץ ---
+  
   const shoppingListItems = items.filter(item => item.current < item.target && !item.isBought);
   const inCartItems = items.filter(item => item.isBought);
   const inStockItems = items.filter(item => item.current >= item.target && !item.isBought);
 
+  // קיבוץ עבור רשימת הקניות
   const groupedShopping = useMemo(() => {
     return shoppingListItems.reduce((acc, item) => {
       if (!acc[item.category]) acc[item.category] = [];
@@ -104,6 +103,15 @@ function ShoppingList() {
       return acc;
     }, {});
   }, [shoppingListItems]);
+
+  // קיבוץ עבור המזווה (המלאי הקיים)
+  const groupedInStock = useMemo(() => {
+    return inStockItems.reduce((acc, item) => {
+      if (!acc[item.category]) acc[item.category] = [];
+      acc[item.category].push(item);
+      return acc;
+    }, {});
+  }, [inStockItems]);
 
   const renderItemCard = (item) => (
     <div key={item.id} className={`item-row ${item.isBought ? 'bought' : (item.current === 0 ? 'missing' : 'partial')}`}>
@@ -154,65 +162,64 @@ function ShoppingList() {
         <button type="submit" className="add-btn">הוסף למלאי</button>
       </form>
 
-      {/* --- שלב 1: מה חסר וצריך לקנות --- */}
+      {/* --- צריך לקנות --- */}
       <h3 className="section-subtitle">📝 צריך לקנות</h3>
       <div className="categories-list">
-        {Object.keys(groupedShopping).length === 0 && shoppingListItems.length === 0 && (
-          <p className="empty-msg">הכל מלא! אין צורך בקניות כרגע.</p>
-        )}
         {Object.keys(groupedShopping).map(category => {
-          const isExpanded = expandedCats[category] !== false; // פתוח כברירת מחדל
-          const categoryItems = groupedShopping[category];
-
+          const isExpanded = expandedCats[category] !== false;
           return (
             <div key={category} className="category-section">
               <button className="category-header" onClick={() => toggleCategory(category)}>
-                <span>{category} ({categoryItems.length})</span>
+                <span>{category} ({groupedShopping[category].length})</span>
                 <span>{isExpanded ? '▼' : '◄'}</span>
               </button>
-              {isExpanded && <div className="category-items">{categoryItems.map(item => renderItemCard(item))}</div>}
+              {isExpanded && <div className="category-items">{groupedShopping[category].map(item => renderItemCard(item))}</div>}
             </div>
           );
         })}
       </div>
 
-      {/* --- שלב 2: העגלה בסופר --- */}
+      {/* --- העגלה בסופר --- */}
       {inCartItems.length > 0 && (
         <>
           <div className="cart-header">
             <h3 className="cart-title">🛒 כבר בעגלה ({inCartItems.length})</h3>
-            <button onClick={completeShopping} className="empty-cart-btn">
-              עדכן מלאי בבית ✅
-            </button>
+            <button onClick={completeShopping} className="empty-cart-btn">עדכן מלאי ✅</button>
           </div>
-          <div className="category-items">
-            {inCartItems.map(item => renderItemCard(item))}
-          </div>
+          <div className="category-items">{inCartItems.map(item => renderItemCard(item))}</div>
         </>
       )}
 
-      {/* --- שלב 3: מה שיש בבית (המזווה) --- */}
+      {/* --- המזווה (מלאי קיים) בחלוקה לקטגוריות --- */}
       <div className="pantry-section">
         <button className="category-header pantry-toggle" onClick={() => toggleCategory('pantry_all')}>
           <span>📦 מוצרים שבמלאי ({inStockItems.length})</span>
           <span>{expandedCats['pantry_all'] ? '▼' : '◄'}</span>
         </button>
+        
         {expandedCats['pantry_all'] && (
-          <div className="category-items">
-            {inStockItems.map(item => (
-              <div key={item.id} className="item-row instock">
-                <span className="item-name">{item.name}</span>
-                <div className="controls-wrapper">
-                  <div className="control-group">
-                    <span className="control-label">בבית</span>
-                    <div className="buttons-row">
-                      <button onClick={() => updateQuantity(item.id, item.current, 'current', 1)} className="qty-btn">+</button>
-                      <span className="qty-display">{item.current}</span>
-                      <button onClick={() => updateQuantity(item.id, item.current, 'current', -1)} className="qty-btn">-</button>
+          <div className="pantry-content">
+            {Object.keys(groupedInStock).map(category => (
+              <div key={`pantry-${category}`} className="pantry-sub-category">
+                <h4 className="pantry-sub-title">{category}</h4>
+                <div className="category-items">
+                  {groupedInStock[category].map(item => (
+                    <div key={item.id} className="item-row instock">
+                      <span className="item-name">{item.name}</span>
+                      <div className="controls-wrapper">
+                        <div className="control-group">
+                          <span className="control-label">בבית</span>
+                          <div className="buttons-row">
+                            <button onClick={() => updateQuantity(item.id, item.current, 'current', 1)} className="qty-btn">+</button>
+                            <span className="qty-display">{item.current}</span>
+                            <button onClick={() => updateQuantity(item.id, item.current, 'current', -1)} className="qty-btn">-</button>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => deleteItem(item.id)} className="delete-btn">🗑️</button>
                     </div>
-                  </div>
+                  ))}
                 </div>
-                <button onClick={() => deleteItem(item.id)} className="delete-btn">🗑️</button>
               </div>
             ))}
           </div>
