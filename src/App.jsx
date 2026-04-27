@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig'; 
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
@@ -13,12 +13,9 @@ function App() {
   const [stores, setStores] = useState([]);
   const [activeStore, setActiveStore] = useState('סופרמרקט');
   
-  // ניהול קטגוריות סגורות
   const [collapsedCats, setCollapsedCats] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
-  // טופס
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
   const [newItemTarget, setNewItemTarget] = useState(1);
@@ -41,6 +38,7 @@ function App() {
     onSnapshot(query(collection(db, 'groceries'), orderBy('createdAt', 'desc')), (snap) => {
       setItems(snap.docs.map(d => ({id: d.id, ...d.data()})));
     });
+    // ניהול חנויות - מביא רק מה-DB ומסנן כפילויות
     onSnapshot(collection(db, 'stores'), (snap) => {
       const sData = snap.docs.map(d => ({id: d.id, ...d.data()}));
       if (sData.length === 0) {
@@ -51,19 +49,19 @@ function App() {
     });
   }, [user]);
 
-  const toggleCat = (catId) => {
-    setCollapsedCats(prev => ({ ...prev, [catId]: !prev[catId] }));
+  const toggleCat = (catName) => {
+    setCollapsedCats(prev => ({ ...prev, [catName]: !prev[catName] }));
   };
 
-  const addItem = async (e) => {
-    if (e) e.preventDefault();
+  const addItem = async () => {
     if (!newItemName.trim()) return;
     const finalCat = newItemCategory.trim() || 'כללי';
     try {
       await addDoc(collection(db, 'groceries'), {
         name: newItemName, category: finalCat, store: activeStore,
         current: 0, target: newItemTarget,
-        note: '', isBought: false, createdAt: new Date()
+        note: '', isBought: false, createdAt: new Date(),
+        priceHistory: [] // מערך חדש למחירים
       });
       setNewItemName(''); setNewItemCategory(''); setNewItemTarget(1);
     } catch (e) { console.error(e); }
@@ -73,14 +71,60 @@ function App() {
     await updateDoc(doc(db, 'groceries', id), { [field]: Math.max(0, val + diff) });
   };
 
+  // --- פיצ'ר חדש: שינוי קטגוריה ---
+  const changeCategory = async (id, currentCat) => {
+    const newCat = prompt("שנה קטגוריה ל:", currentCat);
+    if (newCat && newCat.trim() !== "") {
+      await updateDoc(doc(db, 'groceries', id), { category: newCat.trim() });
+    }
+  };
+
+  // --- פיצ'ר חדש: תיעוד מחיר ---
+  const logPrice = async (item) => {
+    const price = prompt(`כמה עלה "${item.name}" ב${activeStore}?`);
+    if (price && !isNaN(price)) {
+      const newEntry = {
+        price: parseFloat(price),
+        store: activeStore,
+        date: new Date().toLocaleDateString('he-IL')
+      };
+      const updatedHistory = [newEntry, ...(item.priceHistory || [])].slice(0, 5); // שומרים 5 אחרונים
+      await updateDoc(doc(db, 'groceries', item.id), { priceHistory: updatedHistory });
+    }
+  };
+
   const renderItem = (item) => (
-    <motion.div layout initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} key={item.id} className="item-card">
+    <motion.div layout key={item.id} className="item-card">
       <div className="item-main">
-        <span className="item-name">{item.name}</span>
+        <div style={{display:'flex', alignItems:'center'}}>
+          <span className="item-name">{item.name}</span>
+          <button className="edit-cat-btn" onClick={() => changeCategory(item.id, item.category)}>✎</button>
+        </div>
+        
         <input 
           type="text" className="item-note" placeholder="הוסף הערה..." 
           defaultValue={item.note} onBlur={e => updateDoc(doc(db, 'groceries', item.id), { note: e.target.value })} 
         />
+
+        {/* תצוגת מחיר אחרון */}
+        <div className="price-tag" onClick={() => logPrice(item)}>
+          {item.priceHistory && item.priceHistory.length > 0 
+            ? `₪${item.priceHistory[0].price} (${item.priceHistory[0].date})` 
+            : "➕ תעד מחיר"}
+        </div>
+
+        {/* היסטוריית מחירים (מוצגת רק אם יש) */}
+        {item.priceHistory && item.priceHistory.length > 1 && (
+          <div className="price-history-list">
+            {item.priceHistory.slice(1, 3).map((h, index) => (
+              <div key={index} className="history-item">
+                <span>{h.store}</span>
+                <span>₪{h.price}</span>
+                <span>{h.date}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="qty-stack">
@@ -98,11 +142,11 @@ function App() {
         </div>
       </div>
 
-      <div style={{display:'flex', gap:8, alignItems:'center'}}>
+      <div className="action-btns">
         <button onClick={() => updateDoc(doc(db, 'groceries', item.id), { isBought: !item.isBought })} className={`cart-btn ${item.isBought ? 'active' : ''}`}>
           <i className={item.isBought ? "fas fa-check" : "fas fa-shopping-basket"}></i>
         </button>
-        <button onClick={() => window.confirm('למחוק?') && deleteDoc(doc(db, 'groceries', item.id))} style={{background:'none', border:'none', color:'#ccc', cursor:'pointer', padding:5}}>
+        <button onClick={() => window.confirm('למחוק?') && deleteDoc(doc(db, 'groceries', item.id))} style={{background:'none', border:'none', color:'#ccc', cursor:'pointer'}}>
           <i className="fas fa-trash-alt"></i>
         </button>
       </div>
@@ -129,10 +173,10 @@ function App() {
     <div className="app-container">
       <header className="user-header">
         <img src={user.photoURL} className="user-avatar" alt="p" referrerPolicy="no-referrer" />
-        <div style={{display:'flex', gap:12, alignItems:'center'}}>
-          <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>{theme === 'light' ? '🌙' : '☀️'}</button>
-          <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>⚙️</button>
-          <button onClick={() => signOut(auth)} style={{background:'none', border:'none', color:'var(--text-light)', fontSize:12, fontWeight:'bold', cursor:'pointer'}}>התנתק</button>
+        <div style={{display:'flex', gap:10, alignItems:'center'}}>
+          <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} style={{background:'none', border:'none', fontSize:18}}>{theme === 'light' ? '🌙' : '☀️'}</button>
+          <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} style={{background:'none', border:'none', fontSize:18}}>⚙️</button>
+          <button onClick={() => signOut(auth)} style={{background:'none', border:'none', color:'var(--text-light)', fontSize:12, fontWeight:'bold'}}>התנתק</button>
         </div>
       </header>
 
@@ -143,70 +187,46 @@ function App() {
         <button className="store-tab" onClick={() => {const n = prompt("חנות חדשה:"); if (n) addDoc(collection(db, 'stores'), { name: n, createdAt: new Date() });}}>+</button>
       </nav>
 
-      {isSettingsOpen && (
-        <div className="item-card" style={{flexDirection:'column', alignItems:'flex-start'}}>
-          <h4 style={{margin:'0 0 10px'}}>⚙️ ניהול חנויות</h4>
-          {stores.map(s => <div key={s.id} style={{display:'flex', justifyContent:'space-between', width:'100%', marginBottom:8}}><span>{s.name}</span>{s.name !== 'סופרמרקט' && <button onClick={() => deleteDoc(doc(db, 'stores', s.id))} style={{color:'red', border:'none', background:'none', cursor:'pointer'}}>מחק</button>}</div>)}
-        </div>
-      )}
-
-      <input className="f-input" style={{width:'100%', boxSizing:'border-box', marginBottom:15}} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={`🔍 חפש ב${activeStore}...`} />
+      <div className="search-bar">
+        <input className="f-input" style={{width:'100%', boxSizing:'border-box', marginBottom:10}} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={`🔍 חפש ב${activeStore}...`} />
+      </div>
 
       <section>
-        <h2 style={{fontSize:20, margin:'20px 0 10px'}}>📝 צריך לקנות ({shoppingList.length})</h2>
-        {Object.entries(groupItems(shoppingList)).map(([cat, list]) => {
-          const catId = `shop_${cat}`;
-          return (
-            <div key={cat}>
-              <div className="category-header" onClick={() => toggleCat(catId)}>
-                <span>{cat} ({list.length})</span>
-                <i className={`fas fa-chevron-${collapsedCats[catId] ? 'left' : 'down'}`}></i>
-              </div>
-              <AnimatePresence>
-                {!collapsedCats[catId] && (
-                  <motion.div initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} style={{overflow:'hidden'}}>
-                    {list.map(renderItem)}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+        <h2 style={{fontSize:22, marginBottom:10}}>📝 צריך לקנות ({shoppingList.length})</h2>
+        {Object.entries(groupItems(shoppingList)).map(([cat, list]) => (
+          <div key={cat}>
+            <div className="category-header" onClick={() => toggleCat(`shop_${cat}`)}>
+              <span>{cat} ({list.length})</span>
+              <i className={`fas fa-chevron-${collapsedCats[`shop_${cat}`] ? 'left' : 'down'}`}></i>
             </div>
-          );
-        })}
+            {!collapsedCats[`shop_${cat}`] && <AnimatePresence>{list.map(renderItem)}</AnimatePresence>}
+          </div>
+        ))}
 
         {inCart.length > 0 && (
-          <div style={{marginTop:30}}>
-            <h2 style={{fontSize:20, marginBottom:10}}>🛒 בעגלה ({inCart.length})</h2>
+          <>
+            <h2 style={{fontSize:22, marginTop:30}}>🛒 בעגלה ({inCart.length})</h2>
             <AnimatePresence>{inCart.map(renderItem)}</AnimatePresence>
-            <button className="store-tab active" style={{width:'100%', marginTop:10, borderRadius:12, padding:12}} onClick={() => inCart.forEach(i => updateDoc(doc(db, 'groceries', i.id), { current: i.target, isBought: false }))}>עדכן מלאי סופי ✅</button>
-          </div>
+            <button className="store-tab active" style={{width:'100%', marginTop:10, borderRadius:12}} onClick={() => inCart.forEach(i => updateDoc(doc(db, 'groceries', i.id), { current: i.target, isBought: false }))}>עדכן מלאי ✅</button>
+          </>
         )}
 
-        <h2 style={{fontSize:20, marginTop:40, opacity:0.4, marginBottom:10}}>📦 במזווה ({inStock.length})</h2>
-        {Object.entries(groupItems(inStock)).map(([cat, list]) => {
-          const catId = `pantry_${cat}`;
-          return (
-            <div key={cat}>
-              <div className="category-header" onClick={() => toggleCat(catId)}>
-                <span>{cat} ({list.length})</span>
-                <i className={`fas fa-chevron-${collapsedCats[catId] ? 'left' : 'down'}`}></i>
-              </div>
-              <AnimatePresence>
-                {!collapsedCats[catId] && (
-                  <motion.div initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} style={{overflow:'hidden', opacity:0.7}}>
-                    {list.map(renderItem)}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+        <h2 style={{fontSize:22, marginTop:40, opacity:0.4}}>📦 במזווה</h2>
+        {Object.entries(groupItems(inStock)).map(([cat, list]) => (
+          <div key={cat} style={{opacity:0.7}}>
+            <div className="category-header" onClick={() => toggleCat(`pantry_${cat}`)}>
+              <span>{cat} ({list.length})</span>
+              <i className={`fas fa-chevron-${collapsedCats[`pantry_${cat}`] ? 'left' : 'down'}`}></i>
             </div>
-          );
-        })}
+            {!collapsedCats[`pantry_${cat}`] && list.map(renderItem)}
+          </div>
+        ))}
       </section>
 
-      {/* טופס הוספה צף - יישור סופי */}
-      <form className="floating-form" onSubmit={addItem}>
-        <input className="f-input" value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="מה להוסיף?" />
-        <input className="f-input" style={{flex:0.6}} value={newItemCategory} onChange={e => setNewItemCategory(e.target.value)} placeholder="קטגוריה" />
-        <input className="f-input qty-add-input" type="number" value={newItemTarget} onChange={e => setNewItemTarget(Number(e.target.value))} />
+      <form className="floating-form" onSubmit={e => { e.preventDefault(); addItem(); }}>
+        <input className="f-input" value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="מוצר..." />
+        <input className="f-input" style={{flex:0.7}} value={newItemCategory} onChange={e => setNewItemCategory(e.target.value)} placeholder="קטגוריה" />
+        <input className="f-input" style={{flex:0.4}} type="number" value={newItemTarget} onChange={e => setNewItemTarget(Number(e.target.value))} />
         <button className="f-btn" type="submit"><i className="fas fa-plus"></i></button>
       </form>
     </div>
