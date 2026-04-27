@@ -117,3 +117,48 @@ body {
   font-size: 20px; display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
+
+/* --- עיצוב נוסף להיסטוריית מחירים ועריכה --- */
+.price-tag {
+  font-size: 12px;
+  background: #f1f5f9;
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.price-history-list {
+  font-size: 11px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.edit-cat-btn {
+  font-size: 10px;
+  color: var(--text-light);
+  cursor: pointer;
+  margin-right: 5px;
+  background: none;
+  border: none;
+}
+
+.edit-cat-btn:hover { color: var(--primary); }
+
+.price-input-small {
+  width: 60px;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
