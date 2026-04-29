@@ -1,31 +1,23 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore"; // הוספנו את ההפעלה של האופליין
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBYModqV2RyfPkDlhtj5titf2UQx3gpcSk",
-  authDomain: "home-shopping-sharabi.firebaseapp.com",
-  projectId: "home-shopping-sharabi",
-  storageBucket: "home-shopping-sharabi.firebasestorage.app",
-  messagingSenderId: "261915217600",
-  appId: "1:261915217600:web:60b040d9bcbf938b132725",
-  measurementId: "G-QMW2Z4HQXJ"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
-// --- הפעלת מצב לא מקוון (Offline Mode) ---
-enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code == 'failed-precondition') {
-        // יכול לקרות אם יש כמה חלוניות פתוחות במקביל, לא נורא
-        console.log("לא ניתן להפעיל אופליין בכמה חלונות במקביל");
-    } else if (err.code == 'unimplemented') {
-        // הדפדפן לא תומך
-        console.log("הדפדפן לא תומך במצב לא מקוון");
-    }
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
-// הפעלת שירותי ההתחברות
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+export { auth, googleProvider, db };
