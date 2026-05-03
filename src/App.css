@@ -693,3 +693,52 @@ body {
   border-radius: 12px;
   overflow: hidden;
 }
+
+
+
+
+
+
+.app-container {
+  width: 100%;
+  max-width: 500px; /* ברירת מחדל לטלפון */
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: 200px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  transition: max-width 0.4s ease;
+}
+
+/* --- פריסה למחשב (PC) --- */
+@media (min-width: 800px) {
+  .app-container {
+    max-width: 1200px; /* נפתח לרוחב במחשב */
+  }
+
+  /* הופך את רשימת המוצרים לרשת (Grid) במחשב */
+  section > div > div[style*="overflow: hidden"] {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 15px;
+  }
+
+  /* כוונון המזווה שייראה רחב יותר */
+  .item-card {
+    margin-bottom: 0; /* בגלל ה-gap של הגריד */
+  }
+
+  /* כותרות הקטגוריות יתפסו שורה שלמה */
+  .category-header {
+    grid-column: 1 / -1;
+  }
+  
+  /* התאמת דאשבורד התקציב */
+  .stats-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+  }
+}
