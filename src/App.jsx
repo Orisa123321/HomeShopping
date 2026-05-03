@@ -11,6 +11,7 @@ import {
   query,
   orderBy,
   getDoc,
+  where,
 } from "firebase/firestore";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +46,9 @@ function App() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
+  // זיהוי הרשימה המשותפת
+  const [sharedListId, setSharedListId] = useState(null);
+
   const [currentView, setCurrentView] = useState("shopping");
   const [items, setItems] = useState([]);
   const [stores, setStores] = useState([]);
@@ -63,15 +67,38 @@ function App() {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-
-  // הסטייט החדש לשמירת משתמשים פעילים כרגע
   const [activeUsers, setActiveUsers] = useState([]);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [joinCodeInput, setJoinCodeInput] = useState("");
 
+  // אתחול הגדרות PWA (אפליקציה למכשיר) ו-Theme
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () =>
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") setDeferredPrompt(null);
+    }
+  };
+
+  // אתחול משתמש מחובר
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -80,12 +107,26 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- מנגנון נוכחות (Live Multiplayer Presence) ---
+  // שלב 1: שליפת ה-ID של הרשימה שהמשתמש שייך אליה
   useEffect(() => {
     if (!user) return;
-    const presenceRef = doc(db, "presence", user.uid);
+    const userRef = doc(db, "users", user.uid);
+    const unsub = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists() && docSnap.data().listId) {
+        setSharedListId(docSnap.data().listId);
+      } else {
+        // אם אין לו רשימה, הרשימה היא ה-UID שלו כברירת מחדל
+        setSharedListId(user.uid);
+        setDoc(userRef, { listId: user.uid }, { merge: true });
+      }
+    });
+    return () => unsub();
+  }, [user]);
 
-    // מעדכן שאנחנו מחוברים כרגע
+  // מנגנון נוכחות (Multiplayer) - רק מי שבאותה רשימה!
+  useEffect(() => {
+    if (!user || !sharedListId) return;
+    const presenceRef = doc(db, "presence", user.uid);
     const updatePresence = async () => {
       await setDoc(
         presenceRef,
@@ -94,24 +135,24 @@ function App() {
           name: user.displayName,
           photoURL: user.photoURL,
           lastActive: Date.now(),
+          listId: sharedListId,
         },
         { merge: true },
       );
     };
 
     updatePresence();
-    const interval = setInterval(updatePresence, 60000); // מעדכן כל דקה שאנחנו פה
+    const interval = setInterval(updatePresence, 60000);
 
-    // מאזין לכל המשתמשים כדי לראות מי אונליין
-    const unsubPresence = onSnapshot(collection(db, "presence"), (snap) => {
+    const qPresence = query(
+      collection(db, "presence"),
+      where("listId", "==", sharedListId),
+    );
+    const unsubPresence = onSnapshot(qPresence, (snap) => {
       const now = Date.now();
       const usersOnline = [];
-      snap.forEach((doc) => {
-        const data = doc.data();
-        // מי שהיה פעיל ב-2 הדקות האחרונות נחשב מחובר
-        if (now - data.lastActive < 120000) {
-          usersOnline.push(data);
-        }
+      snap.forEach((d) => {
+        if (now - d.data().lastActive < 120000) usersOnline.push(d.data());
       });
       setActiveUsers(usersOnline);
     });
@@ -120,37 +161,75 @@ function App() {
       clearInterval(interval);
       unsubPresence();
     };
-  }, [user]);
+  }, [user, sharedListId]);
 
+  // שלב 2: שליפת כל הנתונים לפי ה-sharedListId (הקוד המשותף)
   useEffect(() => {
-    if (!user) return;
-    onSnapshot(
-      query(collection(db, "groceries"), orderBy("createdAt", "desc")),
-      (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    if (!user || !sharedListId) return;
+
+    const qGroceries = query(
+      collection(db, "groceries"),
+      where("listId", "==", sharedListId),
     );
-    onSnapshot(collection(db, "stores"), (snap) => {
+    const unsubGroceries = onSnapshot(qGroceries, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setItems(
+        data.sort(
+          (a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis() || 0,
+        ),
+      );
+    });
+
+    const qStores = query(
+      collection(db, "stores"),
+      where("listId", "==", sharedListId),
+    );
+    const unsubStores = onSnapshot(qStores, (snap) => {
       const sData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      if (sData.length === 0)
+      const hasSupermarket = sData.some((s) => s.name === "סופרמרקט");
+      if (!hasSupermarket && sData.length === 0) {
         addDoc(collection(db, "stores"), {
           name: "סופרמרקט",
           createdAt: new Date(),
+          listId: sharedListId,
         });
-      else setStores(sData.sort((a, b) => a.createdAt - b.createdAt));
+      } else
+        setStores(
+          sData.sort(
+            (a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis() || 0,
+          ),
+        );
     });
-    onSnapshot(doc(db, "settings", "category_order"), (docSnap) => {
-      if (docSnap.exists()) setCategoryOrder(docSnap.data().order || []);
-    });
-    onSnapshot(collection(db, "recipes"), (snap) =>
+
+    const unsubSettings = onSnapshot(
+      doc(db, "settings", `category_order_${sharedListId}`),
+      (docSnap) => {
+        if (docSnap.exists()) setCategoryOrder(docSnap.data().order || []);
+      },
+    );
+
+    const qRecipes = query(
+      collection(db, "recipes"),
+      where("listId", "==", sharedListId),
+    );
+    const unsubRecipes = onSnapshot(qRecipes, (snap) =>
       setRecipes(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
     );
-  }, [user]);
 
+    return () => {
+      unsubGroceries();
+      unsubStores();
+      unsubSettings();
+      unsubRecipes();
+    };
+  }, [user, sharedListId]);
+
+  // אוטומציה שבועית
   useEffect(() => {
     if (items.length === 0) return;
     const today = new Date();
     const todayDay = today.getDay();
     const todayStr = today.toDateString();
-
     items.forEach(async (item) => {
       if (
         item.recurringDay !== undefined &&
@@ -166,14 +245,36 @@ function App() {
     });
   }, [items.length]);
 
+  const joinFamilyList = async () => {
+    if (!joinCodeInput.trim() || joinCodeInput.trim() === user.uid)
+      return alert("קוד לא תקין או שזה הקוד שלך.");
+    await setDoc(
+      doc(db, "users", user.uid),
+      { listId: joinCodeInput.trim() },
+      { merge: true },
+    );
+    alert("הצטרפת בהצלחה לרשימה המשותפת!");
+    setJoinCodeInput("");
+  };
+
+  const leaveFamilyList = async () => {
+    if (window.confirm("להתנתק מהרשימה המשותפת ולחזור לרשימה הפרטית שלך?")) {
+      await setDoc(
+        doc(db, "users", user.uid),
+        { listId: user.uid },
+        { merge: true },
+      );
+    }
+  };
+
   const toggleRecurring = async (item) => {
     const day = prompt(
       "באיזה יום להוסיף אוטומטית? (0=ראשון, 1=שני... 6=שבת. השאר ריק לביטול)",
     );
     if (day === null) return;
-    if (day.trim() === "") {
+    if (day.trim() === "")
       await updateDoc(doc(db, "groceries", item.id), { recurringDay: null });
-    } else {
+    else {
       const d = parseInt(day);
       if (d >= 0 && d <= 6) {
         await updateDoc(doc(db, "groceries", item.id), { recurringDay: d });
@@ -275,6 +376,7 @@ function App() {
         createdAt: new Date(),
         priceHistory: [],
         expirationDate: "",
+        listId: sharedListId, // מוסיף את מזהה המשפחה למוצר
       });
       setNewItemName("");
       setNewItemCategory("");
@@ -333,6 +435,7 @@ function App() {
         name: name.trim(),
         ingredients: [],
         createdAt: new Date(),
+        listId: sharedListId,
       });
   };
 
@@ -387,6 +490,7 @@ function App() {
           createdAt: new Date(),
           priceHistory: [],
           expirationDate: "",
+          listId: sharedListId,
         });
       }
     }
@@ -420,6 +524,7 @@ function App() {
           createdAt: new Date(),
           priceHistory: [],
           expirationDate: "",
+          listId: sharedListId,
         });
       }
     }
@@ -654,7 +759,7 @@ function App() {
       newOrder[index + 1] = temp;
     }
     await setDoc(
-      doc(db, "settings", "category_order"),
+      doc(db, "settings", `category_order_${sharedListId}`),
       { order: newOrder },
       { merge: true },
     );
@@ -775,7 +880,6 @@ function App() {
             referrerPolicy="no-referrer"
           />
 
-          {/* בועות משתמשים מחוברים (Multiplayer Presence) */}
           <div className="active-users-container">
             {activeUsers
               .filter((u) => u.uid !== user.uid)
@@ -878,6 +982,7 @@ function App() {
                   addDoc(collection(db, "stores"), {
                     name: n,
                     createdAt: new Date(),
+                    listId: sharedListId,
                   });
               }}
             >
@@ -890,32 +995,139 @@ function App() {
               className="item-card"
               style={{ flexDirection: "column", alignItems: "stretch" }}
             >
-              <h4 style={{ margin: "0 0 10px" }}>⚙️ ניהול חנויות</h4>
-              {stores.map((s) => (
-                <div
-                  key={s.id}
+              {deferredPrompt && (
+                <button
+                  onClick={handleInstallApp}
                   style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "var(--primary)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "12px",
+                    fontWeight: "bold",
+                    fontSize: "16px",
+                    marginBottom: "15px",
                     display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 8,
+                    justifyContent: "center",
+                    gap: "8px",
+                    cursor: "pointer",
                   }}
                 >
-                  <span>{s.name}</span>
-                  {s.name !== "סופרמרקט" && (
-                    <button
-                      onClick={() => deleteDoc(doc(db, "stores", s.id))}
-                      style={{
-                        color: "red",
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                      }}
-                    >
-                      מחק
-                    </button>
-                  )}
+                  <i className="fas fa-download"></i> התקן אפליקציה למכשיר
+                </button>
+              )}
+
+              {/* --- אזור השיתוף המשפחתי (הפיצ'ר החדש!) --- */}
+              <h4 style={{ margin: "10px 0 10px" }}>👨‍👩‍👧‍👦 שיתוף משפחתי</h4>
+              <div
+                style={{
+                  background: "var(--bg)",
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 20,
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0 0 8px 0",
+                    fontSize: 13,
+                    fontWeight: "bold",
+                  }}
+                >
+                  הקוד שלך לשיתוף:
+                </p>
+                <div style={{ display: "flex", gap: 8, marginBottom: 15 }}>
+                  <input
+                    className="f-input"
+                    readOnly
+                    value={user.uid}
+                    style={{ fontSize: 11, padding: 8 }}
+                  />
+                  <button
+                    className="add-price-btn"
+                    onClick={() => {
+                      navigator.clipboard.writeText(user.uid);
+                      alert("הקוד הועתק!");
+                    }}
+                  >
+                    העתק
+                  </button>
                 </div>
-              ))}
+
+                <p
+                  style={{
+                    margin: "0 0 8px 0",
+                    fontSize: 13,
+                    fontWeight: "bold",
+                  }}
+                >
+                  הצטרף לרשימה של מישהו אחר:
+                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="f-input"
+                    placeholder="הדבק קוד שותף..."
+                    value={joinCodeInput}
+                    onChange={(e) => setJoinCodeInput(e.target.value)}
+                    style={{ fontSize: 12, padding: 8 }}
+                  />
+                  <button className="add-price-btn" onClick={joinFamilyList}>
+                    הצטרף
+                  </button>
+                </div>
+
+                {sharedListId !== user.uid && (
+                  <button
+                    style={{
+                      marginTop: 15,
+                      width: "100%",
+                      color: "var(--danger)",
+                      background: "none",
+                      border: "1px solid var(--danger)",
+                      borderRadius: 8,
+                      padding: 8,
+                      cursor: "pointer",
+                    }}
+                    onClick={leaveFamilyList}
+                  >
+                    נתק שיתוף וחזור לרשימה הפרטית שלי
+                  </button>
+                )}
+              </div>
+
+              <h4 style={{ margin: "0 0 10px" }}>⚙️ ניהול חנויות</h4>
+              {uniqueStores.map((storeName) => {
+                const storeDoc = stores.find((s) => s.name === storeName);
+                return (
+                  <div
+                    key={storeName}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span>{storeName}</span>
+                    {storeName !== "סופרמרקט" && storeDoc && (
+                      <button
+                        onClick={() =>
+                          deleteDoc(doc(db, "stores", storeDoc.id))
+                        }
+                        style={{
+                          color: "red",
+                          border: "none",
+                          background: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        מחק
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+
               <h4 style={{ margin: "20px 0 10px" }}>🔄 סדר קטגוריות בסופר</h4>
               <div
                 style={{
