@@ -64,7 +64,7 @@ export default function LandingPage({ onLoginClick }) {
           <motion.h1 variants={fadeInUp}>
             קניות חכמות,
             <br />
-            <span className="text-gradient">מתחילים כאן.</span>
+            <span className="text-gradient">מתחילות כאן.</span>
           </motion.h1>
           <motion.p variants={fadeInUp}>
             תשכחו מהודעות ווצאפ על "מה חסר בבית". נהלו רשימה משותפת, סרקו קבלות
