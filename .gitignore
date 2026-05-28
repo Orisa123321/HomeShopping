@@ -24,5 +24,4 @@ dist-ssr
 *.sw?
 # Private environment variables and Firebase keys
 .env
-*.json
 home-shopping-sharabi-firebase-adminsdk-fbsvc-65677bf361.json
