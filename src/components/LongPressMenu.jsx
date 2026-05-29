@@ -1,0 +1,150 @@
+// src/components/LongPressMenu.jsx
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+export function useLongPress(callback, ms = 500) {
+  const [startLongPress, setStartLongPress] = useState(false);
+
+  useEffect(() => {
+    let timerId;
+    if (startLongPress) {
+      timerId = setTimeout(callback, ms);
+    } else {
+      clearTimeout(timerId);
+    }
+    return () => clearTimeout(timerId);
+  }, [startLongPress, callback, ms]);
+
+  return {
+    onMouseDown: () => setStartLongPress(true),
+    onMouseUp: () => setStartLongPress(false),
+    onMouseLeave: () => setStartLongPress(false),
+    onTouchStart: () => setStartLongPress(true),
+    onTouchEnd: () => setStartLongPress(false),
+  };
+}
+
+// קומפוננטת התפריט המהיר
+export function QuickActionsMenu({ isOpen, onClose, item, actions }) {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="modal-overlay"
+        style={{ zIndex: 999 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="quick-menu-content"
+          style={{
+            position: "absolute",
+            bottom: "20px",
+            left: "20px",
+            right: "20px",
+            background: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(20px)",
+            borderRadius: "24px",
+            padding: "20px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15)",
+            direction: "rtl",
+          }}
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ textAlign: "center", marginBottom: "15px" }}>
+            <span style={{ fontSize: "28px" }}>⚙️</span>
+            <h3
+              style={{
+                margin: "5px 0 0",
+                fontSize: "18px",
+                fontWeight: "bold",
+              }}
+            >
+              {item.name}
+            </h3>
+            <p style={{ margin: 0, fontSize: "13px", color: "#666" }}>
+              פעולות מהירות על הפריט
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "10px",
+            }}
+          >
+            <button
+              className="menu-action-btn"
+              onClick={() => {
+                actions.duplicate(item);
+                onClose();
+              }}
+            >
+              📋 שכפל פריט
+            </button>
+            <button
+              className="menu-action-btn"
+              onClick={() => {
+                actions.moveCategory(item);
+                onClose();
+              }}
+            >
+              📂 העבר קטגוריה
+            </button>
+            <button
+              className="menu-action-btn"
+              onClick={() => {
+                actions.setReminder(item);
+                onClose();
+              }}
+            >
+              🔔 הגדר תזכורת
+            </button>
+            <button
+              className="menu-action-btn"
+              onClick={() => {
+                actions.pinToTop(item);
+                onClose();
+              }}
+            >
+              📌 הצמד למעלה
+            </button>
+            <button
+              className="menu-action-btn"
+              onClick={() => {
+                actions.share(item);
+                onClose();
+              }}
+              style={{ gridColumn: "span 2" }}
+            >
+              🔗 שתף מוצר ספציפי
+            </button>
+          </div>
+
+          <button
+            onClick={onClose}
+            style={{
+              width: "100%",
+              marginTop: "15px",
+              padding: "12px",
+              background: "#eee",
+              border: "none",
+              borderRadius: "12px",
+              fontWeight: "bold",
+              cursor: "pointer",
+            }}
+          >
+            ביטול
+          </button>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}

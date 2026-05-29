@@ -1,0 +1,24 @@
+.swipe-container {
+  touch-action: pan-y; /* מאפשר גלילה אנכית של הדף ללא הפרעה מהגרירה האופקית */
+  background: var(--bg-card, #ffffff);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.swipe-background {
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.swipe-action-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+.swipeable-front-card {
+  background: var(--bg-card, #ffffff);
+  border-radius: 12px;
+  width: 100%;
+}

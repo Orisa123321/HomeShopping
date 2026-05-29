@@ -13,6 +13,22 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ItemCard } from "../components/ItemCard";
 import CatalogModal from "../components/modals/CatalogModal";
 import { showToast, showPrompt, showConfirm } from "../utils/helpers";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  TouchSensor,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 
 const syncExistingPricesToCatalog = async () => {
   const isConfirmed = await showConfirm(
@@ -221,6 +237,39 @@ export function ShoppingView({
   // (וודא ש-doc ו-getDoc מיובאים מ-firebase/firestore למעלה)
 
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false); // כברירת מחדל, התפריט סגור
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // גרירה רק לאחר תנועה של 8 פיקסלים למניעת התנגשות עם לחיצות
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // מונע בעיות גלילה במובייל - לחיצה ארוכה מתחילה גרירה
+        tolerance: 5,
+      },
+    }),
+  );
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = shoppingList.findIndex((item) => item.id === active.id);
+    const newIndex = shoppingList.findIndex((item) => item.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const updatedList = arrayMove(shoppingList, oldIndex, newIndex);
+    try {
+      const batch = writeBatch(db);
+      updatedList.forEach((item, index) => {
+        const itemRef = doc(db, "groceries", item.id);
+        batch.update(itemRef, { order: index });
+      });
+      await batch.commit();
+      console.log("הסדר החדש נשמר ב-Firestore!");
+    } catch (error) {
+      console.error("שגיאה בשמירת סדר הגרירה:", error);
+      showToast("לא הצלחנו לשמור את הסדר החדש בענן 😢", "error");
+    }
+  };
 
   const fetchGlobalPrices = async (itemName) => {
     try {
@@ -241,6 +290,7 @@ export function ShoppingView({
       console.error("שגיאה במשיכת מחירים גלובליים:", error);
     }
   };
+
   return (
     <>
       {isSettingsOpen && (
@@ -1159,97 +1209,117 @@ export function ShoppingView({
           )}
         </div>
 
-        {Object.entries(groupItems(shoppingList))
-          .sort((a, b) => sortCategories(a[0], b[0]))
-          .map(([cat, list]) => {
-            const catId = `shop_${cat}`;
-            return (
-              <div key={cat}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCat(catId) }}
-                  className="category-header"
-                  onClick={() => toggleCat(catId)}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    background: "linear-gradient(to left, #f8fafc, #f1f5f9)",
-                    borderRight: "4px solid #5c6bc0",
-                    padding: "12px 16px",
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-                    marginTop: "20px",
-                    marginBottom: "15px",
-                    position: "sticky",
-                    top: "10px", // המרחק מהקצה העליון של המסך
-                    zIndex: 10, // מוודא שהכותרת מרחפת מעל המוצרים
-                  }}
-                >
-                  <span
+        {/* עטיפת ה-DndContext סביב הרשימה הפעילה בלבד */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToFirstScrollableAncestor]}
+        >
+          {Object.entries(groupItems(shoppingList))
+            .sort((a, b) => sortCategories(a[0], b[0]))
+            .map(([cat, list]) => {
+              // מיון הרשימה המקומית לפי ה-order החדש
+              const sortedList = [...list].sort(
+                (a, b) => (a.order || 0) - (b.order || 0),
+              );
+              const catId = `shop_${cat}`;
+
+              return (
+                <div key={cat}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") toggleCat(catId);
+                    }}
+                    className="category-header"
+                    onClick={() => toggleCat(catId)}
                     style={{
-                      fontWeight: "bold",
-                      fontSize: "16px",
-                      color: "#1e293b",
                       display: "flex",
+                      justifyContent: "space-between",
                       alignItems: "center",
-                      gap: "8px",
+                      background: "linear-gradient(to left, #f8fafc, #f1f5f9)",
+                      borderRight: "4px solid #5c6bc0",
+                      padding: "12px 16px",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+                      marginTop: "20px",
+                      marginBottom: "15px",
+                      position: "sticky",
+                      top: "10px",
+                      zIndex: 10,
                     }}
                   >
-                    <span style={{ fontSize: "20px" }}>
-                      {getCategoryIcon(cat)}
-                    </span>
-                    {cat} ({list.length})
-                  </span>
-                  <i
-                    className={`fas fa-chevron-${
-                      collapsedCats[catId] ? "down" : "left"
-                    }`}
-                    style={{ color: "#94a3b8" }}
-                  ></i>
-                </div>
-                <AnimatePresence>
-                  {collapsedCats[catId] && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      style={{ overflow: "hidden" }}
+                    <span
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                        color: "#1e293b",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
                     >
-                      {/* ה-div החדש שעושה את הקסם של הסידור לרוחב! */}
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fill, minmax(220px, 1fr))",
-                          gap: "12px",
-                          paddingBottom: "10px",
-                        }}
+                      <span style={{ fontSize: "20px" }}>
+                        {getCategoryIcon(cat)}
+                      </span>
+                      {cat} ({list.length})
+                    </span>
+                    <i
+                      className={`fas fa-chevron-${
+                        collapsedCats[catId] ? "down" : "left"
+                      }`}
+                      style={{ color: "#94a3b8" }}
+                    ></i>
+                  </div>
+
+                  <AnimatePresence>
+                    {collapsedCats[catId] && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{ overflow: "hidden" }}
                       >
-                        {list.map((item) => (
-                          <ItemCard
-                            key={item.id}
-                            item={item}
-                            changeCategory={changeCategory}
-                            toggleRecurring={toggleRecurring}
-                            logPrice={logPrice}
-                            deletePriceEntry={deletePriceEntry}
-                            updateQuantity={updateQuantity}
-                            deleteItem={deleteItem}
-                            updateItemStatus={updateItemStatus}
-                            fetchGlobalPrices={fetchGlobalPrices}
-                            categoryExpanded={!!collapsedCats[catId]}
-                          />
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
+                        <SortableContext
+                          items={sortedList.map((i) => i.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns:
+                                "repeat(auto-fill, minmax(220px, 1fr))",
+                              gap: "12px",
+                              paddingBottom: "10px",
+                            }}
+                          >
+                            {sortedList.map((item) => (
+                              <SortableItemCard
+                                key={item.id}
+                                item={item}
+                                changeCategory={changeCategory}
+                                toggleRecurring={toggleRecurring}
+                                logPrice={logPrice}
+                                deletePriceEntry={deletePriceEntry}
+                                updateQuantity={updateQuantity}
+                                deleteItem={deleteItem}
+                                updateItemStatus={updateItemStatus}
+                                fetchGlobalPrices={fetchGlobalPrices}
+                                categoryExpanded={!!collapsedCats[catId]}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+        </DndContext>
 
         {inCart.length > 0 && (
           <div style={{ marginTop: 30 }}>
@@ -1390,7 +1460,9 @@ export function ShoppingView({
                 <div
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCat(catId) }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") toggleCat(catId);
+                  }}
                   className="category-header"
                   onClick={() => toggleCat(catId)}
                   style={{
