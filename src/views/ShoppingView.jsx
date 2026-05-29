@@ -17,7 +17,7 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   useSensor,
   useSensors,
   TouchSensor,
@@ -238,7 +238,7 @@ export function ShoppingView({
 
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false); // כברירת מחדל, התפריט סגור
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8, // גרירה רק לאחר תנועה של 8 פיקסלים למניעת התנגשות עם לחיצות
       },

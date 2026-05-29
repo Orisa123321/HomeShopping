@@ -14,7 +14,12 @@ export function SortableItemCard(props) {
   return (
     <div ref={setNodeRef} style={style}>
       {/* פה אנחנו מוסיפים את ה-listeners רק לאזור הגרירה כדי לא להפריע ללחיצות */}
-      <div className="drag-handle" {...attributes} {...listeners}>
+      <div
+        className="drag-handle"
+        {...attributes}
+        {...listeners}
+        style={{ touchAction: "none" }}
+      >
         ⠿ {/* אייקון גרירה */}
       </div>
       <ItemCard {...props} />
