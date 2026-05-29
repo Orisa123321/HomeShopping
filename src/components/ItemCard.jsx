@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { getExpStatus, getExpText, DAYS_HEB } from "../utils/helpers";
@@ -100,7 +100,7 @@ export function ItemCard({
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !isExpanded) {
+        if ((e.key === "Enter" || e.key === " ") && !isExpanded) {
           e.preventDefault();
           setIsExpanded(true);
         }
@@ -116,7 +116,7 @@ export function ItemCard({
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && isExpanded) {
+          if ((e.key === "Enter" || e.key === " ") && isExpanded) {
             e.preventDefault();
             e.stopPropagation();
             setIsExpanded(false);
@@ -156,190 +156,196 @@ export function ItemCard({
       </div>
 
       {/* תוכן מורחב — נראה רק בלחיצה */}
-      {isExpanded && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="item-expanded"
-        >
-          {/* הערה */}
-          <input
-            type="text"
-            className="item-note"
-            placeholder="הוסף הערה..."
-            defaultValue={item.note}
-            onClick={(e) => e.stopPropagation()}
-            onBlur={(e) =>
-              updateDoc(doc(db, "groceries", item.id), { note: e.target.value })
-            }
-          />
-
-          {/* כמויות */}
-          <div className="controls-wrap">
-            <div className="qty-stack">
-              <div className="qty-row">
-                <span className="qty-label">בבית</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateQuantity(item.id, item.current, "current", -1);
-                  }}
-                  className="btn-mini"
-                >
-                  <i className="fas fa-minus"></i>
-                </button>
-                <span className="qty-val">{item.current}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateQuantity(item.id, item.current, "current", 1);
-                  }}
-                  className="btn-mini"
-                >
-                  <i className="fas fa-plus"></i>
-                </button>
-              </div>
-              <div className="qty-row">
-                <span className="qty-label">צריך</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateQuantity(item.id, item.target, "target", -1);
-                  }}
-                  className="btn-mini"
-                >
-                  <i className="fas fa-minus"></i>
-                </button>
-                <span className="qty-val">{item.target}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateQuantity(item.id, item.target, "target", 1);
-                  }}
-                  className="btn-mini"
-                >
-                  <i className="fas fa-plus"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* כפתורי פעולה */}
-          <div className="item-actions-row">
-            <button
-              className="add-price-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                logPrice(item);
-              }}
-            >
-              + תעד מחיר
-            </button>
-            <button
-              className="add-price-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                fetchGlobalPrices(item.name);
-              }}
-              style={{ background: "var(--primary)", color: "white" }}
-            >
-              🌍 מחירים
-            </button>
-            <button
-              className="edit-cat-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                changeCategory(item.id, item.category);
-              }}
-            >
-              ✎ קטגוריה
-            </button>
-            <button
-              className="edit-cat-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleRecurring(item);
-              }}
-              title="הגדרת מחזוריות"
-            >
-              <i className="fas fa-sync"></i>
-            </button>
-          </div>
-
-          {/* תוקף */}
-          <div className="exp-wrap">
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="item-expanded"
+            style={{ overflow: "hidden" }}
+          >
+            {/* הערה */}
             <input
-              type="date"
-              className={`exp-date-input ${expStatus}`}
-              value={item.expirationDate || ""}
+              type="text"
+              className="item-note"
+              placeholder="הוסף הערה..."
+              defaultValue={item.note}
               onClick={(e) => e.stopPropagation()}
-              onChange={(e) =>
+              onBlur={(e) =>
                 updateDoc(doc(db, "groceries", item.id), {
-                  expirationDate: e.target.value,
+                  note: e.target.value,
                 })
               }
             />
-            {expStatus && <span className="exp-alert-text">{expText}</span>}
-          </div>
 
-          {/* היסטוריית מחירים */}
-          {item.priceHistory && item.priceHistory.length > 0 && (
-            <div className="price-history-container">
-              {item.priceHistory.map((h, index) => (
-                <div key={index} className="history-item">
-                  <span className="history-store">{h.store}</span>
-                  <span className="history-price">₪{h.price}</span>
-                  <span className="history-date">{h.date}</span>
+            {/* כמויות */}
+            <div className="controls-wrap">
+              <div className="qty-stack">
+                <div className="qty-row">
+                  <span className="qty-label">בבית</span>
                   <button
-                    className="delete-price-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      deletePriceEntry(item, index);
+                      updateQuantity(item.id, item.current, "current", -1);
                     }}
+                    className="btn-mini"
                   >
-                    <i className="fas fa-times"></i>
+                    <i className="fas fa-minus"></i>
+                  </button>
+                  <span className="qty-val">{item.current}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateQuantity(item.id, item.current, "current", 1);
+                    }}
+                    className="btn-mini"
+                  >
+                    <i className="fas fa-plus"></i>
                   </button>
                 </div>
-              ))}
+                <div className="qty-row">
+                  <span className="qty-label">צריך</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateQuantity(item.id, item.target, "target", -1);
+                    }}
+                    className="btn-mini"
+                  >
+                    <i className="fas fa-minus"></i>
+                  </button>
+                  <span className="qty-val">{item.target}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateQuantity(item.id, item.target, "target", 1);
+                    }}
+                    className="btn-mini"
+                  >
+                    <i className="fas fa-plus"></i>
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* כפתורי מחיקה וסגירה */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: 4,
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteItem(item.id);
-              }}
+            {/* כפתורי פעולה */}
+            <div className="item-actions-row">
+              <button
+                className="add-price-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  logPrice(item);
+                }}
+              >
+                + תעד מחיר
+              </button>
+              <button
+                className="add-price-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchGlobalPrices(item.name);
+                }}
+                style={{ background: "var(--primary)", color: "white" }}
+              >
+                🌍 מחירים
+              </button>
+              <button
+                className="edit-cat-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  changeCategory(item.id, item.category);
+                }}
+              >
+                ✎ קטגוריה
+              </button>
+              <button
+                className="edit-cat-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleRecurring(item);
+                }}
+                title="הגדרת מחזוריות"
+              >
+                <i className="fas fa-sync"></i>
+              </button>
+            </div>
+
+            {/* תוקף */}
+            <div className="exp-wrap">
+              <input
+                type="date"
+                className={`exp-date-input ${expStatus}`}
+                value={item.expirationDate || ""}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) =>
+                  updateDoc(doc(db, "groceries", item.id), {
+                    expirationDate: e.target.value,
+                  })
+                }
+              />
+              {expStatus && <span className="exp-alert-text">{expText}</span>}
+            </div>
+
+            {/* היסטוריית מחירים */}
+            {item.priceHistory && item.priceHistory.length > 0 && (
+              <div className="price-history-container">
+                {item.priceHistory.map((h, index) => (
+                  <div key={index} className="history-item">
+                    <span className="history-store">{h.store}</span>
+                    <span className="history-price">₪{h.price}</span>
+                    <span className="history-date">{h.date}</span>
+                    <button
+                      className="delete-price-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deletePriceEntry(item, index);
+                      }}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* כפתורי מחיקה וסגירה */}
+            <div
               style={{
-                background: "none",
-                border: "none",
-                color: "#ccc",
-                cursor: "pointer",
-                fontSize: 13,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginTop: 4,
               }}
             >
-              <i className="fas fa-trash-alt"></i> מחק
-            </button>
-            <button
-              className="collapse-item-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpanded(false);
-              }}
-            >
-              <i className="fas fa-chevron-up"></i> סגור
-            </button>
-          </div>
-        </motion.div>
-      )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteItem(item.id);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#ccc",
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                <i className="fas fa-trash-alt"></i> מחק
+              </button>
+              <button
+                className="collapse-item-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(false);
+                }}
+              >
+                <i className="fas fa-chevron-up"></i> סגור
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
