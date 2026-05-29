@@ -29,6 +29,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
+import { SortableItemCard } from "./SortableItemCard";
 
 const syncExistingPricesToCatalog = async () => {
   const isConfirmed = await showConfirm(
@@ -230,6 +231,7 @@ export function ShoppingView({
   productsWithPrice,
   totalProducts,
   fastAddProduct,
+  getSmartDefaults,
 }) {
   const [isCatalogOpen, setIsCatalogOpen] = React.useState(false);
   const [priceCompareData, setPriceCompareData] = useState(null);

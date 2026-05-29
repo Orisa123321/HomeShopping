@@ -121,7 +121,7 @@ export const guessCategory = (name) => {
     n.includes("חלב") ||
     n.includes("גבינה") ||
     n.includes("יוגורט") ||
-    n.includes("שוקו") ||
+    (n.includes("שוקו") && !n.includes("שוקול")) ||
     n.includes("קוטג") ||
     n.includes("חמאה")
   )
@@ -2500,8 +2500,21 @@ function App() {
     );
   }
   if (!user) {
+    const handleLoginClick = async () => {
+      try {
+        await signInWithPopup(auth, googleProvider);
+      } catch (error) {
+        console.warn("התחברות נכשלה או בוטלה:", error);
+        if (error.code === 'auth/popup-blocked') {
+          showToast("הדפדפן חסם את חלון ההתחברות. אנא אפשר חלונות קופצים (Pop-ups) עבור אתר זה.", "error");
+        } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+          showToast("שגיאה בהתחברות. נסה שוב.", "error");
+        }
+      }
+    };
+
     return (
-      <LandingPage onLoginClick={() => signInWithPopup(auth, googleProvider)} />
+      <LandingPage onLoginClick={handleLoginClick} />
     );
   }
 
@@ -3439,6 +3452,9 @@ function App() {
       )}
       {currentView === "shopping" && (
         <ShoppingView
+          newItemUnit={newItemUnit}
+          setNewItemUnit={setNewItemUnit}
+          getSmartDefaults={getSmartDefaults}
           uniqueStores={uniqueStores}
           activeStore={activeStore}
           setActiveStore={setActiveStore}
