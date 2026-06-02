@@ -17,6 +17,8 @@ import {
 } from "firebase/firestore";
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   deleteUser,
@@ -699,6 +701,20 @@ function App() {
   // ];
 
   useEffect(() => {
+    // Check if the user is returning from a redirect sign-in
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("שגיאה בקבלת תוצאת ההפניה:", error);
+        if (error.code !== "auth/redirect-cancelled-by-user") {
+          showToast("שגיאה בתהליך ההתחברות. נסה שוב.", "error");
+        }
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (u) {
         setUser(u);
@@ -2501,13 +2517,40 @@ function App() {
   }
   if (!user) {
     const handleLoginClick = async () => {
+      // Check if we are in standalone PWA mode, where popups are usually blocked or open in standard browser
+      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+      if (isStandalone) {
+        try {
+          showToast("מפנה להתחברות מאובטחת...", "info");
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectError) {
+          console.error("שגיאה בהתחברות דרך הפניה:", redirectError);
+          showToast("שגיאה בהתחברות. נסה שוב.", "error");
+        }
+        return;
+      }
+
       try {
         await signInWithPopup(auth, googleProvider);
       } catch (error) {
-        console.warn("התחברות נכשלה או בוטלה:", error);
-        if (error.code === 'auth/popup-blocked') {
-          showToast("הדפדפן חסם את חלון ההתחברות. אנא אפשר חלונות קופצים (Pop-ups) עבור אתר זה.", "error");
-        } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        console.warn("התחברות נכשלה או בוטלה, מנסה הפניה (Redirect):", error);
+        
+        // If popup was blocked, cancelled, or failed due to COOP / other popup issues, fall back to redirect!
+        if (
+          error.code === 'auth/popup-blocked' ||
+          error.code === 'auth/cancelled-popup-request' ||
+          error.code === 'auth/popup-closed-by-user' ||
+          error.message?.includes('Cross-Origin-Opener-Policy')
+        ) {
+          try {
+            showToast("חלון ההתחברות נחסם, מפנה להתחברות...", "info");
+            await signInWithRedirect(auth, googleProvider);
+          } catch (redirectError) {
+            console.error("שגיאה בהתחברות מבוססת הפניה:", redirectError);
+            showToast("שגיאה בהתחברות. נסה שוב.", "error");
+          }
+        } else {
           showToast("שגיאה בהתחברות. נסה שוב.", "error");
         }
       }

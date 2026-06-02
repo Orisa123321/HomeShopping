@@ -10,6 +10,14 @@
   direction: rtl; /* יישור לימין */
 }
 
+/* Explicit heading colors to prevent inheriting global light-theme dark text on landing page */
+.landing-container h1,
+.landing-container h2,
+.landing-container h3,
+.landing-container h4 {
+  color: #ffffff;
+}
+
 /* הילות רקע (Ambient Glows) */
 .ambient-glow {
   position: absolute;
