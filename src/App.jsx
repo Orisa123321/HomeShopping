@@ -701,30 +701,56 @@ function App() {
   // ];
 
   useEffect(() => {
+    let authStateResolved = false;
+    let redirectResolved = false;
+    let currentUser = null;
+
+    const checkCompletion = () => {
+      if (redirectResolved && authStateResolved) {
+        setLoadingAuth(false);
+      }
+    };
+
+    // Safety timeout to ensure the app loads even if Firebase gets stuck
+    const safetyTimeout = setTimeout(() => {
+      console.warn("אימות הנתונים לקח יותר מדי זמן, טוען את האפליקציה בכל זאת.");
+      setLoadingAuth(false);
+    }, 4000);
+
     // Check if the user is returning from a redirect sign-in
     getRedirectResult(auth)
       .then((result) => {
+        redirectResolved = true;
         if (result && result.user) {
           setUser(result.user);
+          currentUser = result.user;
         }
+        checkCompletion();
       })
       .catch((error) => {
+        redirectResolved = true;
         console.error("שגיאה בקבלת תוצאת ההפניה:", error);
         if (error.code !== "auth/redirect-cancelled-by-user") {
           showToast("שגיאה בתהליך ההתחברות. נסה שוב.", "error");
         }
+        checkCompletion();
       });
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
+      authStateResolved = true;
       if (u) {
         setUser(u);
-        setLoadingAuth(false);
-      } else {
+        currentUser = u;
+      } else if (!currentUser) {
         setUser(null);
-        setLoadingAuth(false);
       }
+      checkCompletion();
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   useEffect(() => {

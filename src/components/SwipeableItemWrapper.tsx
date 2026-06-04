@@ -1,44 +1,54 @@
-// src/components/SwipeableItemWrapper.jsx
-import React, { useState, useRef } from "react";
-import { motion, useMotionValue, useTransform } from "framer-motion";
-import "./SwipeableItem.css"; // עיצוב נלווה (מופיע בהמשך)
+// src/components/SwipeableItemWrapper.tsx
+import React, { useRef } from "react";
+// 1. ייבוא PanInfo מ-framer-motion כדי שהפונקציה שלנו תדע איזה סוג מידע חוזר מהגרירה
+import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
+import "./SwipeableItem.css";
 
+// 2. הגדרת הממשק (Interface) - אומר ל-React בדיוק איזה Props הקומפוננטה מקבלת
+interface SwipeableItemWrapperProps {
+  children: React.ReactNode; // טיפוס סטנדרטי ב-React עבור אלמנטים פנימיים
+  onDelete: () => void; // פונקציה שלא מקבלת כלום ולא מחזירה כלום
+  onMarkBought: () => void;
+  onOpenActions: () => void;
+  isBought: boolean; // משתנה בוליאני פשוט
+}
+
+// 3. הוספת הממשק שלנו לשורת ההגדרה של הקומפוננטה
 export function SwipeableItemWrapper({
   children,
   onDelete,
   onMarkBought,
   onOpenActions,
   isBought,
-}) {
-  const containerRef = useRef(null);
+}: SwipeableItemWrapperProps) {
+  // 4. הגדרת סוג הרפרנס (HTMLDivElement) כדי שנדע שזה אלמנט דיב
+  const containerRef = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
 
-  // חישוב צבעי רקע דינמיים לפי כיוון הגרירה
-  // גרירה ימינה (חיובי) -> ירוק (רכישה)
-  // גרירה שמאלה (שלילי) -> אדום/כתום (מחיקה/פעולות)
   const background = useTransform(
     x,
     [-150, 0, 150],
     [
-      "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)", // אדום עז למחיקה
-      "rgba(255, 255, 255, 0)", // שקוף באמצע
-      "linear-gradient(135deg, #10b981 0%, #059669 100%)", // ירוק לרכישה
+      "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)",
+      "rgba(255, 255, 255, 0)",
+      "linear-gradient(135deg, #10b981 0%, #059669 100%)",
     ],
   );
 
-  const handleDragEnd = (event, info) => {
+  // 5. הגדרת הטיפוסים של האירוע ושל נתוני הגרירה (info מצופה להיות מסוג PanInfo)
+  const handleDragEnd = (
+    event: MouseEvent | TouchEvent | PointerEvent,
+    info: PanInfo,
+  ) => {
     const swipeThreshold = 100;
     const longSwipeThreshold = 220;
     const offset = info.offset.x;
 
     if (offset > swipeThreshold) {
-      // 1. סווייפ ימינה -> סימון כנרכש ✓
       onMarkBought();
     } else if (offset < -longSwipeThreshold) {
-      // 2. סווייפ ארוך שמאלה -> מחיקה ישירה 🗑️
       onDelete();
     } else if (offset < -swipeThreshold) {
-      // 3. סווייפ קצר שמאלה -> פתיחת תפריט פעולות
       onOpenActions();
     }
   };
@@ -49,7 +59,6 @@ export function SwipeableItemWrapper({
       ref={containerRef}
       style={{ position: "relative", overflow: "hidden", borderRadius: "12px" }}
     >
-      {/* רקע פעולה דינמי מאחורי הכרטיס הנגרר */}
       <motion.div
         className="swipe-background"
         style={{
@@ -69,7 +78,6 @@ export function SwipeableItemWrapper({
           fontSize: "14px",
         }}
       >
-        {/* תוכן בצד ימין (כשגוררים ימינה) */}
         <motion.div
           style={{ opacity: useTransform(x, [0, 50], [0, 1]) }}
           className="swipe-action-label right"
@@ -77,7 +85,6 @@ export function SwipeableItemWrapper({
           {isBought ? "↩ להחזיר לרשימה" : "✓ נקנה!"}
         </motion.div>
 
-        {/* תוכן בצד שמאל (כשגוררים שמאלה) */}
         <motion.div
           style={{ opacity: useTransform(x, [-50, 0], [1, 0]) }}
           className="swipe-action-label left"
@@ -86,7 +93,6 @@ export function SwipeableItemWrapper({
         </motion.div>
       </motion.div>
 
-      {/* הכרטיס עצמו שניתן לגרירה */}
       <motion.div
         drag="x"
         dragDirectionLock
