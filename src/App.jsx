@@ -701,56 +701,18 @@ function App() {
   // ];
 
   useEffect(() => {
-    let authStateResolved = false;
-    let redirectResolved = false;
-    let currentUser = null;
-
-    const checkCompletion = () => {
-      if (redirectResolved && authStateResolved) {
-        setLoadingAuth(false);
-      }
-    };
-
-    // Safety timeout to ensure the app loads even if Firebase gets stuck
-    const safetyTimeout = setTimeout(() => {
-      console.warn("אימות הנתונים לקח יותר מדי זמן, טוען את האפליקציה בכל זאת.");
-      setLoadingAuth(false);
-    }, 4000);
-
     // Check if the user is returning from a redirect sign-in
-    getRedirectResult(auth)
-      .then((result) => {
-        redirectResolved = true;
-        if (result && result.user) {
-          setUser(result.user);
-          currentUser = result.user;
-        }
-        checkCompletion();
-      })
-      .catch((error) => {
-        redirectResolved = true;
-        console.error("שגיאה בקבלת תוצאת ההפניה:", error);
-        if (error.code !== "auth/redirect-cancelled-by-user") {
-          showToast("שגיאה בתהליך ההתחברות. נסה שוב.", "error");
-        }
-        checkCompletion();
-      });
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      authStateResolved = true;
       if (u) {
         setUser(u);
-        currentUser = u;
-      } else if (!currentUser) {
+        setLoadingAuth(false);
+      } else {
         setUser(null);
+        setLoadingAuth(false);
       }
-      checkCompletion();
     });
-
-    return () => {
-      unsubscribe();
-      clearTimeout(safetyTimeout);
-    };
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -2543,48 +2505,30 @@ function App() {
   }
   if (!user) {
     const handleLoginClick = async () => {
-      // Check if we are in standalone PWA mode, where popups are usually blocked or open in standard browser
-      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-
-      if (isStandalone) {
-        try {
-          showToast("מפנה להתחברות מאובטחת...", "info");
-          await signInWithRedirect(auth, googleProvider);
-        } catch (redirectError) {
-          console.error("שגיאה בהתחברות דרך הפניה:", redirectError);
-          showToast("שגיאה בהתחברות. נסה שוב.", "error");
-        }
-        return;
-      }
-
       try {
+        // מנסים התחברות עם חלון קופץ באופן ישיר
         await signInWithPopup(auth, googleProvider);
       } catch (error) {
-        console.warn("התחברות נכשלה או בוטלה, מנסה הפניה (Redirect):", error);
-        
-        // If popup was blocked, cancelled, or failed due to COOP / other popup issues, fall back to redirect!
-        if (
-          error.code === 'auth/popup-blocked' ||
-          error.code === 'auth/cancelled-popup-request' ||
-          error.code === 'auth/popup-closed-by-user' ||
-          error.message?.includes('Cross-Origin-Opener-Policy')
+        console.error("שגיאה בהתחברות:", error);
+
+        if (error.code === "auth/popup-blocked") {
+          showToast(
+            "הדפדפן חסם את חלון ההתחברות. אנא אשר חלונות קופצים (Popups) כדי להתחבר.",
+            "error",
+          );
+        } else if (
+          error.code === "auth/popup-closed-by-user" ||
+          error.code === "auth/cancelled-popup-request"
         ) {
-          try {
-            showToast("חלון ההתחברות נחסם, מפנה להתחברות...", "info");
-            await signInWithRedirect(auth, googleProvider);
-          } catch (redirectError) {
-            console.error("שגיאה בהתחברות מבוססת הפניה:", redirectError);
-            showToast("שגיאה בהתחברות. נסה שוב.", "error");
-          }
+          // המשתמש סגר את החלון - לא צריך להציג שגיאה
+          return;
         } else {
           showToast("שגיאה בהתחברות. נסה שוב.", "error");
         }
       }
     };
 
-    return (
-      <LandingPage onLoginClick={handleLoginClick} />
-    );
+    return <LandingPage onLoginClick={handleLoginClick} />;
   }
 
   // חישוב התקדמות קניות מותאם לחנות הפעילה בלבד ולמוצרים שברשימת הקניות
