@@ -14,7 +14,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
-        enabled: true // מאפשר לנו לבדוק את זה גם במחשב בפיתוח
+        enabled: true
       },
       manifest: {
         name: 'הסופר שלי - קניות חכמות',
@@ -22,7 +22,7 @@ export default defineConfig({
         description: 'אפליקציית ניהול קניות, מתכונים ותקציב',
         theme_color: '#4361ee',
         background_color: '#f8f9fc',
-        display: 'standalone', // מעלים את שורת הדפדפן!
+        display: 'standalone',
         icons: [
           {
             src: 'icon-192x192.png',

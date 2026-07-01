@@ -6,7 +6,6 @@ const AppGuide = () => {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    // בודק האם המשתמש כבר ביקש לא לראות את המדריך בעבר
     const hideGuide = localStorage.getItem("hideAppGuide");
     if (!hideGuide) {
       setIsVisible(true);
@@ -22,7 +21,6 @@ const AppGuide = () => {
     setIsVisible(false);
   };
 
-  // כאן אפשר לערוך את הטקסטים וההסברים שמופיעים במדריך
   const steps = [
     {
       title: "ברוכים הבאים לרשימת הקניות! 🎉",
@@ -126,8 +124,6 @@ const AppGuide = () => {
   );
 };
 
-// --- עיצוב פנימי (Inline Styles) לנוחות ---
-// אפשר להעביר את זה ל-App.css או index.css אם תעדיף
 const overlayStyle = {
   position: "fixed",
   top: 0,

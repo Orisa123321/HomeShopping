@@ -44,28 +44,25 @@ const syncExistingPricesToCatalog = async () => {
   try {
     console.log("מתחיל סנכרון מחירים לקטלוג...");
 
-    // 1. שולפים את כל המוצרים מקולקציית המחירים הגלובלית
     const pricesSnapshot = await getDocs(collection(db, "global_prices"));
     const priceDocs = pricesSnapshot.docs;
 
     console.log(`נמצאו ${priceDocs.length} מוצרים עם מחירים בשרת.`);
 
-    const chunkSize = 400; // פיירבייס מגביל Batch ל-500 פעולות
+    const chunkSize = 400;
 
-    // 2. עוברים עליהם בקבוצות של 400
     for (let i = 0; i < priceDocs.length; i += chunkSize) {
       const chunk = priceDocs.slice(i, i + chunkSize);
       const batch = writeBatch(db);
 
       chunk.forEach((priceDoc) => {
-        const productName = priceDoc.id; // השם של המסמך במחירים זה בדרך כלל שם המוצר
+        const productName = priceDoc.id;
         const catalogRef = doc(db, "product_catalog", productName);
 
-        // אומרים לפיירבייס: סמן את המוצר הזה כבעל מחיר, ואל תדרוס נתונים אחרים (merge)
         batch.set(catalogRef, { hasPrice: true }, { merge: true });
       });
 
-      await batch.commit(); // משגרים את הקבוצה לשרת
+      await batch.commit();
       console.log(`עודכנו ${chunk.length} מוצרים...`);
     }
 
@@ -236,18 +233,17 @@ export function ShoppingView({
   const [isCatalogOpen, setIsCatalogOpen] = React.useState(false);
   const [priceCompareData, setPriceCompareData] = useState(null);
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
-  // (וודא ש-doc ו-getDoc מיובאים מ-firebase/firestore למעלה)
 
-  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false); // כברירת מחדל, התפריט סגור
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8, // גרירה רק לאחר תנועה של 8 פיקסלים למניעת התנגשות עם לחיצות
+        distance: 8,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250, // מונע בעיות גלילה במובייל - לחיצה ארוכה מתחילה גרירה
+        delay: 250,
         tolerance: 5,
       },
     }),
@@ -323,7 +319,6 @@ export function ShoppingView({
             </button>
           )}
 
-          {/* כפתור הפעלת התראות Push */}
           <button
             onClick={async () => {
               if (!("Notification" in window)) {
@@ -337,14 +332,12 @@ export function ShoppingView({
                   "🔔 ההתראות הופעלו בהצלחה! משפחת שרעבי מסונכרנת.",
                   "success",
                 );
-                // בדיקה מיידית שהכל תקין
                 if (typeof triggerPushNotification === "function") {
                   triggerPushNotification(
                     "מזל טוב! 🎉",
                     "הפעלת בהצלחה את התראות הקניות החכמות.",
                   );
                 } else {
-                  // במקרה והפונקציה אינה מונגשת ישירות כפרופ
                   const reg = await navigator.serviceWorker.ready;
                   reg.showNotification("מזל טוב! 🎉", {
                     body: "הפעלת בהצלחה את התראות הקניות החכמות.",
@@ -610,22 +603,7 @@ export function ShoppingView({
             </button>
           </div>
 
-          {/* <button
-            onClick={syncExistingPricesToCatalog}
-            style={{
-              background: "#f59e0b",
-              color: "white",
-              padding: "10px",
-              borderRadius: "8px",
-              border: "none",
-              width: "100%",
-              fontWeight: "bold",
-              cursor: "pointer",
-              marginBottom: "15px",
-            }}
-          >
-            🔄 סנכרן מחירי עבר לקטלוג
-          </button> */}
+
 
           <div
             style={{
@@ -664,7 +642,6 @@ export function ShoppingView({
           placeholder={`🔍 חפש ב${activeStore}...`}
         />
       </div>{" "}
-      {/* תפריט פעולות חכמות בעיצוב קומפקטי ומודרני */}
       <div
         style={{
           display: "grid",
@@ -673,7 +650,6 @@ export function ShoppingView({
           marginBottom: "15px",
         }}
       >
-        {/* כפתור איחוד כפילויות */}
         <button
           onClick={triggerMergeDuplicates}
           disabled={isAiLoading}
@@ -698,7 +674,6 @@ export function ShoppingView({
           <span>{isAiLoading ? "בודק..." : "אחד כפילויות"}</span>
         </button>
 
-        {/* כפתור סדר קטגוריות חכם */}
         <button
           onClick={triggerAiCategorization}
           disabled={isAiLoading}
@@ -723,7 +698,6 @@ export function ShoppingView({
           <span>{isAiLoading ? "מסדר..." : "סדר קטגוריות"}</span>
         </button>
 
-        {/* כפתור רשימה חכמה */}
         <button
           onClick={() => {
             setPlannerStep(1);
@@ -752,8 +726,6 @@ export function ShoppingView({
           <span>רשימה מאפס</span>
         </button>
       </div>{" "}
-      {/* -------------------- חלוניות אישור (Modals) -------------------- */}
-      {/* חלונית אישור סידור קטגוריות */}
       <AnimatePresence>
         {categoryModalData && (
           <motion.div
@@ -802,7 +774,6 @@ export function ShoppingView({
           </motion.div>
         )}
       </AnimatePresence>
-      {/* חלונית אישור איחוד כפילויות */}
       <AnimatePresence>
         {mergeModalData && (
           <motion.div
@@ -869,34 +840,7 @@ export function ShoppingView({
           </motion.div>
         )}
       </AnimatePresence>{" "}
-      {/* כפתור טבלת אלופים */}
-      {/* <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginBottom: "15px",
-        }}
-      >
-        <button
-          onClick={() => setIsLeaderboardOpen(true)}
-          style={{
-            background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
-            color: "white",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "25px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            boxShadow: "0 4px 10px rgba(245, 158, 11, 0.4)",
-            fontSize: "16px",
-          }}
-        >
-          <span>🏆</span> טבלת אלופים
-        </button>
-      </div> */}
+
       {hasOpenCats && (
         <div
           style={{
@@ -911,7 +855,6 @@ export function ShoppingView({
         </div>
       )}
       <section>
-        {/* --- בלוק 1: העוזר החכם (בעיצוב פרימיום קומפקטי) --- */}
         <div
           style={{
             marginBottom: "20px",
@@ -1037,7 +980,6 @@ export function ShoppingView({
           )}
         </div>
 
-        {/* --- בלוק 2: כותרת הקניות המקורית --- */}
         <div
           style={{
             display: "flex",
@@ -1050,7 +992,6 @@ export function ShoppingView({
             <h2 style={{ fontSize: 20, margin: "0 0 8px 0" }}>
               📝 צריך לקנות ({shoppingList.length})
             </h2>
-            {/* מד התקדמות של הקניה */}
             {(shoppingList.length > 0 || inCart.length > 0) && (
               <div
                 style={{
@@ -1098,7 +1039,6 @@ export function ShoppingView({
               </div>
             )}
 
-            {/* כפתורי פעולה לרשימת הקניות */}
             {shoppingList.length > 0 && (
               <div
                 style={{
@@ -1108,7 +1048,6 @@ export function ShoppingView({
                   marginTop: "8px",
                 }}
               >
-                {/* כפתור שיתוף ב-WhatsApp */}
                 <button
                   id="whatsapp-share-btn"
                   onClick={shareListToWhatsApp}
@@ -1158,10 +1097,8 @@ export function ShoppingView({
                   <i className="fas fa-heartbeat"></i> מנתח תזונה AI
                 </button>
 
-                {/* כפתור מחיקת כל רשימת הקניות */}
                 <button
                   onClick={async () => {
-                    // <--- הוספנו פה async
                     const isConfirmed = await showConfirm(
                       "האם אתה בטוח שברצונך למחוק את כל רשימת הקניות?",
                       "מחק",
@@ -1211,7 +1148,6 @@ export function ShoppingView({
           )}
         </div>
 
-        {/* עטיפת ה-DndContext סביב הרשימה הפעילה בלבד */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -1221,7 +1157,6 @@ export function ShoppingView({
           {Object.entries(groupItems(shoppingList))
             .sort((a, b) => sortCategories(a[0], b[0]))
             .map(([cat, list]) => {
-              // מיון הרשימה המקומית לפי ה-order החדש
               const sortedList = [...list].sort(
                 (a, b) => (a.order || 0) - (b.order || 0),
               );
@@ -1348,7 +1283,6 @@ export function ShoppingView({
               )}
             </h2>
             <AnimatePresence>
-              {/* התחלת עטיפת גריד למוצרים שבעגלה */}
               <div
                 style={{
                   display: "grid",
@@ -1372,7 +1306,6 @@ export function ShoppingView({
                   />
                 ))}
               </div>
-              {/* סוף עטיפת גריד */}
             </AnimatePresence>
             <button
               className="store-tab active"
@@ -1406,17 +1339,14 @@ export function ShoppingView({
             📦 במזווה ({inStock.length})
           </h2>
           <div style={{ display: "flex", gap: "8px" }}>
-            {/* כפתור מחיקת המזווה */}
             {inStock.length > 0 && (
               <button
                 onClick={async () => {
-                  // <--- הוספנו פה async
                   const isConfirmed = await showConfirm(
                     "האם אתה בטוח שברצונך לרוקן את כל המזווה? פעולה זו אינה הפיכה!",
                     "מחק",
                   );
                   if (isConfirmed) {
-                    // מוחקים ישירות מהמסד
                     inStock.forEach((item) =>
                       deleteDoc(doc(db, "groceries", item.id)),
                     );
@@ -1480,8 +1410,8 @@ export function ShoppingView({
                     marginTop: "20px",
                     marginBottom: "15px",
                     position: "sticky",
-                    top: "10px", // המרחק מהקצה העליון של המסך
-                    zIndex: 10, // מוודא שהכותרת מרחפת מעל המוצרים
+                    top: "10px",
+                    zIndex: 10,
                   }}
                 >
                   <span
@@ -1514,7 +1444,6 @@ export function ShoppingView({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden", opacity: 0.7 }}
                     >
-                      {/* ה-div החדש שעושה את הקסם של הסידור לרוחב! */}
                       <div
                         style={{
                           display: "grid",
@@ -1546,7 +1475,6 @@ export function ShoppingView({
             );
           })}
       </section>
-      {/* --- אזור הוספת מוצרים צף (Floating Action Sheet) --- */}
       <div
         style={{
           position: "fixed",
@@ -1555,31 +1483,28 @@ export function ShoppingView({
           right: "5%",
           width: "90%",
           background: "#ffffff",
-          boxShadow: "0 12px 40px rgba(0, 0, 0, 0.18)", // צל עמוק ויוקרתי
+          boxShadow: "0 12px 40px rgba(0, 0, 0, 0.18)",
           zIndex: 1100,
-          borderRadius: "24px", // פינות עגולות רכות יותר
-          padding: isAddMenuOpen ? "20px" : "12px", // ריווח משתנה
+          borderRadius: "24px",
+          padding: isAddMenuOpen ? "20px" : "12px",
           direction: "rtl",
           boxSizing: "border-box",
-          border: "1px solid rgba(0,0,0,0.05)", // גבול עדין מאוד
-          transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)", // אנימציה חלקה לפתיחה
+          border: "1px solid rgba(0,0,0,0.05)",
+          transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
         }}
       >
         {!isAddMenuOpen ? (
-          // ---- מצב סגור: כפתור Pill מודרני ----
           <button
             onClick={() => {
-              // לוגיקה חכמה: בודקים איזו קטגוריה פתוחה עכשיו ברשימת הקניות
               const activeShopCats = Object.keys(groupItems(shoppingList));
               const openCats = activeShopCats.filter(
                 (cat) => !collapsedCats[`shop_${cat}`],
               );
 
-              // אם בדיוק קטגוריה אחת פתוחה, נמלא אותה אוטומטית!
               if (openCats.length === 1) {
                 setNewItemCategory(openCats[0]);
               } else {
-                setNewItemCategory(""); // נאפס במקרה של כמה פתוחות
+                setNewItemCategory("");
               }
 
               setIsAddMenuOpen(true);
@@ -1605,11 +1530,9 @@ export function ShoppingView({
             הוסף מוצר חדש
           </button>
         ) : (
-          // ---- מצב פתוח: פאנל הוספה מתקדם ----
           <div
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
-            {/* שורת כותרת עליונה קבועה שמבטיחה שכפתור הסגירה תמיד יופיע ויעבוד */}
             <div
               style={{
                 display: "flex",
@@ -1643,7 +1566,6 @@ export function ShoppingView({
                 </span>
               </div>
 
-              {/* כפתור מזער קומפקטי */}
               <button
                 type="button"
                 onClick={() => setIsAddMenuOpen(false)}
@@ -1670,12 +1592,10 @@ export function ShoppingView({
               </button>
             </div>
 
-            {/* ה-form שלך: אנחנו כופים עליו הגדרות מיקום רגילות כדי לבטל לחלוטין את ה-CSS הישן ששבר אותו */}
             <form
               className="floating-form"
               onSubmit={(e) => {
                 addItem(e);
-                // בחרתי להשאיר אותו פתוח אחרי הוספה כמו שביקשת קודם
               }}
               style={{
                 position: "relative",
@@ -1693,7 +1613,6 @@ export function ShoppingView({
                 gap: "12px",
               }}
             >
-              {/* כפתור בחר מוצר מהקטלוג */}
               <button
                 type="button"
                 onClick={() => setIsCatalogOpen(true)}
@@ -1731,7 +1650,6 @@ export function ShoppingView({
                 ></i>
               </button>
 
-              {/* --- הצעות חכמות מתוך הקטלוג --- */}
               {activeSuggestions.length > 0 && (
                 <div
                   className="suggestions-popup"
@@ -1751,7 +1669,6 @@ export function ShoppingView({
                   }}
                 >
                   {activeSuggestions.map((s) => {
-                    // חיפוש האם יש היסטוריית מחירים למוצר אצל המשתמש
                     const matchingItem = shoppingList
                       .concat(inCart)
                       .find((i) => i.name === s.name);
@@ -1770,7 +1687,6 @@ export function ShoppingView({
                           setNewItemName(s.name);
                           setNewItemCategory(s.category);
 
-                          // השמה מיידית של ברירות המחדל החכמות של המוצר הנבחר
                           const defaults = getSmartDefaults(s.name);
                           setNewItemTarget(defaults.target);
                           setNewItemUnit(defaults.unit);
@@ -1794,7 +1710,6 @@ export function ShoppingView({
                           (e.currentTarget.style.background = "#ffffff")
                         }
                       >
-                        {/* צד ימין: אימוג'י + שם מוצר + קטגוריה */}
                         <div
                           style={{
                             display: "flex",
@@ -1830,7 +1745,6 @@ export function ShoppingView({
                           </div>
                         </div>
 
-                        {/* צד שמאל: תג מחיר היסטורי (אם קיים) */}
                         {avgPrice ? (
                           <span
                             style={{
@@ -1865,7 +1779,6 @@ export function ShoppingView({
                 </div>
               )}
 
-              {/* מוצרים תכופים (Favorites) */}
               <div
                 style={{
                   display: "flex",
@@ -1876,11 +1789,10 @@ export function ShoppingView({
                 className="scrollbar-hide"
               >
                 {catalog
-                  // סינון זריז (למשל כאלו שקנינו יותר מ-2 פעמים)
                   .sort(
                     (a, b) => (b.purchaseCount || 0) - (a.purchaseCount || 0),
                   )
-                  .slice(0, 5) // ניקח רק את ה-5 המובילים
+                  .slice(0, 5)
                   .map((product) => (
                     <button
                       key={product.id || product.name}
@@ -1907,7 +1819,6 @@ export function ShoppingView({
                   ))}
               </div>
 
-              {/* --- אינפוט החיפוש החכם --- */}
               <div style={{ display: "flex", gap: "10px" }}>
                 <input
                   value={newItemName}
@@ -1915,7 +1826,6 @@ export function ShoppingView({
                     const val = e.target.value;
                     setNewItemName(val);
 
-                    // זיהוי חכם בזמן אמת של קטגוריה, יחידת מידה וכמות מומלצת
                     if (val.trim().length > 0) {
                       const defaults = getSmartDefaults(val);
                       setNewItemCategory(defaults.category);
@@ -1932,19 +1842,18 @@ export function ShoppingView({
                   onPaste={(e) => {
                     const pastedText = e.clipboardData.getData("Text");
                     if (pastedText.includes("\n")) {
-                      e.preventDefault(); // מונע הדבקה רגילה
+                      e.preventDefault();
                       const lines = pastedText
                         .split("\n")
                         .map((l) => l.trim())
                         .filter((l) => l.length > 0);
 
-                      // קורא להוספה מהירה על כל שורה מודבקת
                       lines.forEach((line) => fastAddProduct(line));
                       showToast(
                         `⚡ ${lines.length} מוצרים מהרשימה התווספו בהצלחה!`,
                         "success",
                       );
-                      setNewItemName(""); // מאפס את השדה
+                      setNewItemName("");
                     }
                   }}
                   placeholder="התחל להקליד מוצר (לדוג: חלב, לחם)..."
@@ -1964,7 +1873,6 @@ export function ShoppingView({
                     setTimeout(() => setShowSuggestions(false), 250);
                   }}
                 />
-                {/* השדה של הקטגוריה עם רשימה נפתחת (datalist) */}
                 <div style={{ width: "35%", position: "relative" }}>
                   <input
                     list="categories-datalist"
@@ -1993,7 +1901,6 @@ export function ShoppingView({
                 </div>
               </div>
 
-              {/* שורת הפעולות התחתונה */}
               <div
                 style={{
                   display: "flex",
@@ -2002,7 +1909,6 @@ export function ShoppingView({
                   marginTop: "4px",
                 }}
               >
-                {/* כפתורי סריקה צד ימין */}
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button
                     type="button"
@@ -2054,7 +1960,6 @@ export function ShoppingView({
                         "בקרוב: ה-AI יזהה לבד מה חסר במקרר שלך!",
                         "success",
                       );
-                      // כאן תוכל להדביק את הקוד לשליחת התמונה מול שרת ה-Firebase שלך כמו בקבלות
                     }}
                     title="צלם מזווה (זיהוי AI)"
                     style={{
@@ -2072,7 +1977,6 @@ export function ShoppingView({
                   >
                     <i className="fas fa-camera"></i>
                   </button>
-                  {/* כפתור סריקת קבלה חדש */}
                   <button
                     type="button"
                     onClick={() =>
@@ -2109,11 +2013,9 @@ export function ShoppingView({
                     onChange={handleReceiptScan}
                   />
                 </div>
-                {/* כמות, יחידה וכפתור הוספה צד שמאל */}
                 <div
                   style={{ display: "flex", gap: "8px", alignItems: "center" }}
                 >
-                  {/* בורר יחידות מידה מודרני */}
                   <select
                     value={newItemUnit}
                     onChange={(e) => setNewItemUnit(e.target.value)}
@@ -2202,7 +2104,6 @@ export function ShoppingView({
         catalog={catalog}
         onAddItem={addItemToCartFromRec}
       />
-      {/* חלון השוואת מחירים חוצה רשתות */}
       {isPriceModalOpen && priceCompareData && (
         <div
           style={{
@@ -2252,14 +2153,13 @@ export function ShoppingView({
                 marginTop: "20px",
               }}
             >
-              {/* עוברים על כל הרשתות שחזרו מפיירבייס, מתעלמים משדה התאריך lastUpdated */}
               {Object.keys(priceCompareData.prices)
                 .filter((key) => key !== "lastUpdated")
                 .sort(
                   (a, b) =>
                     priceCompareData.prices[a][0].price -
                     priceCompareData.prices[b][0].price,
-                ) // ממיין מהזול ליקר!
+                )
                 .map((store) => {
                   const storeData = priceCompareData.prices[store][0];
                   return (

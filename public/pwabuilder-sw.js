@@ -47,7 +47,6 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-// --- שדרוג התראות Push 2.0 ---
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "קניות חכמות 🛒";

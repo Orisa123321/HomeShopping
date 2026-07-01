@@ -17,7 +17,6 @@ export function ComparePricesView({ catalog }) {
     if (cleanVal.length >= 2) {
       const searchWords = cleanVal.toLowerCase().split(/\s+/);
 
-      // 1. מסננים
       let matches = catalog.filter((c) => {
         const productName = c.name.toLowerCase();
         // return searchWords.every((word) => productName.includes(word));
@@ -26,7 +25,6 @@ export function ComparePricesView({ catalog }) {
         );
       });
 
-      // 2. ממיינים בדיוק כמו שעשינו בעמוד הקניות (שמות קצרים שמתחילים במילה ראשונים)
       matches.sort((a, b) => {
         const aStarts = a.name.startsWith(cleanVal);
         const bStarts = b.name.startsWith(cleanVal);
@@ -48,13 +46,12 @@ export function ComparePricesView({ catalog }) {
     setSuggestions([]);
     setIsLoading(true);
     try {
-      // שאילתה ישירה למאגר המחירים הגלובלי
       const docRef = doc(db, "global_prices", productName);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         setPriceData(docSnap.data());
       } else {
-        setPriceData({}); // אין נתונים
+        setPriceData({});
       }
     } catch (error) {
       console.error("שגיאה במשיכת מחירים:", error);
@@ -65,19 +62,16 @@ export function ComparePricesView({ catalog }) {
   const requestPriorityUpdate = async () => {
     if (!selectedProduct) return;
     try {
-      // 1. חיפוש חכם בקטלוג הקיים כדי למצוא ברקוד למוצר החיפוש החופשי
       const matchedCatalogItem = catalog.find(
         (c) =>
           c.name.toLowerCase().includes(selectedProduct.toLowerCase()) ||
           selectedProduct.toLowerCase().includes(c.name.toLowerCase()),
       );
 
-      // אם מצאנו מוצר דומה בקטלוג, ניקח את הברקוד שלו
       const matchedBarcode = matchedCatalogItem
         ? matchedCatalogItem.barcode
         : "";
 
-      // 2. עדכון הקטלוג ב-Firestore גם עם ברקוד וגם עם עדיפות VIP
       await setDoc(
         doc(db, "product_catalog", selectedProduct),
         {
@@ -122,7 +116,6 @@ export function ComparePricesView({ catalog }) {
         </p>
       </div>
 
-      {/* שורת החיפוש עם הכפתור */}
       <div
         style={{ position: "relative", marginBottom: "40px", width: "100%" }}
       >
@@ -132,17 +125,17 @@ export function ComparePricesView({ catalog }) {
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="איזה מוצר לחפש? (לדוגמה: חלב 3%)"
             style={{
-              flex: 1 /* נותן לתיבת הטקסט לתפוס את שאר המקום הפנוי בשורה */,
-              padding: "18px 25px" /* ריווח פנימי גדול יותר */,
+              flex: 1 ,
+              padding: "18px 25px" ,
               border: "2px solid var(--border)",
-              borderRadius: "50px" /* פינות עגולות ויפות כמו של גוגל */,
-              fontSize: "18px" /* פונט גדול וברור */,
+              borderRadius: "50px" ,
+              fontSize: "18px" ,
               outline: "none",
               boxSizing: "border-box",
               transition: "all 0.3s",
               boxShadow:
-                "0 6px 20px rgba(0,0,0,0.06)" /* צללית עדינה למראה פרימיום */,
-              textAlign: "right" /* מוודא שהטקסט מתחיל תמיד מימין */,
+                "0 6px 20px rgba(0,0,0,0.06)" ,
+              textAlign: "right" ,
             }}
             onFocus={(e) => {
               e.target.style.borderColor = "var(--primary)";
@@ -180,7 +173,6 @@ export function ComparePricesView({ catalog }) {
           </button>
         </div>
 
-        {/* הצעות חכמות מהקטלוג */}
         {suggestions.length > 0 && (
           <div
             style={{
@@ -194,8 +186,8 @@ export function ComparePricesView({ catalog }) {
               marginTop: "5px",
               boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
               zIndex: 10,
-              maxHeight: "300px" /* 🌟 מגביל את גובה החלונית */,
-              overflowY: "auto" /* 🌟 מאפשר גלילה פנימית כשיש הרבה תוצאות */,
+              maxHeight: "300px" ,
+              overflowY: "auto" ,
             }}
           >
             {suggestions.map((s) => (
@@ -217,7 +209,6 @@ export function ComparePricesView({ catalog }) {
                   (e.currentTarget.style.background = "var(--card)")
                 }
               >
-                {/* הוספנו את הנקודה לפני השם של המוצר */}
                 <span
                   title={
                     s.hasPrice
@@ -230,7 +221,7 @@ export function ComparePricesView({ catalog }) {
                     borderRadius: "50%",
                     backgroundColor: s.hasPrice ? "#22c55e" : "#ef4444",
                     display: "inline-block",
-                    flexShrink: 0, // מונע מהנקודה להתכווץ אם השם של המוצר ארוך
+                    flexShrink: 0,
                   }}
                 />
                 <span
@@ -248,7 +239,6 @@ export function ComparePricesView({ catalog }) {
         )}
       </div>
 
-      {/* אזור התוצאות */}
       {isLoading ? (
         <div
           style={{
@@ -315,9 +305,8 @@ export function ComparePricesView({ catalog }) {
             >
               {Object.entries(priceData)
                 .filter(([key]) => key !== "lastUpdated")
-                .sort((a, b) => a[1][0].price - b[1][0].price) // מיון מהזול ליקר
+                .sort((a, b) => a[1][0].price - b[1][0].price)
                 .sort((a, b) => {
-                  // רשימת רשתות גדולות שיופיעו ראשונות (לפי סדר עדיפות)
                   const MAJOR_CHAINS = [
                     "שופרסל",
                     "רמי לוי",
@@ -333,13 +322,10 @@ export function ComparePricesView({ catalog }) {
                   const aIsMajor = aIdx !== -1;
                   const bIsMajor = bIdx !== -1;
 
-                  // אם שתיהן רשתות גדולות - מיון לפי מחיר
                   if (aIsMajor && bIsMajor)
                     return a[1][0].price - b[1][0].price;
-                  // רשת גדולה תמיד לפני רשת קטנה
                   if (aIsMajor && !bIsMajor) return -1;
                   if (!aIsMajor && bIsMajor) return 1;
-                  // שתיהן קטנות - מיון לפי מחיר
                   return a[1][0].price - b[1][0].price;
                 })
                 .map(([store, prices], index) => (

@@ -1,16 +1,12 @@
 // src/components/LongPressMenu.tsx
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingItem } from "../types"; // ייבוא הטיפוס של הפריט שלנו
+import { ShoppingItem } from "../types";
 
-// 1. הוספת טיפוסים ל-Hook:
-// callback היא פונקציה שלא מקבלת כלום ומחזירה כלום (void)
-// ms הוא מספר (number)
 export function useLongPress(callback: () => void, ms: number = 500) {
   const [startLongPress, setStartLongPress] = useState(false);
 
   useEffect(() => {
-    // השתמשנו ב-any כאן כפתרון מהיר כדי למנוע התנגשויות בין מערכת הטיימר של Node לזו של הדפדפן
     let timerId: any;
     if (startLongPress) {
       timerId = setTimeout(callback, ms);
@@ -29,8 +25,6 @@ export function useLongPress(callback: () => void, ms: number = 500) {
   };
 }
 
-// 2. הגדרת ממשק הקומפוננטה:
-// שימו לב איך אנחנו מגדירים בדיוק כל פעולה באובייקט ה-actions ומצהירים שהיא מקבלת item תקני.
 interface QuickActionsMenuProps {
   isOpen: boolean;
   onClose: () => void;
@@ -44,7 +38,6 @@ interface QuickActionsMenuProps {
   };
 }
 
-// 3. החלת הממשק על הקומפוננטה שלנו
 export function QuickActionsMenu({
   isOpen,
   onClose,
@@ -80,7 +73,6 @@ export function QuickActionsMenu({
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          // 4. ציון סוג אירוע הלחיצה ליתר ביטחון
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           <div style={{ textAlign: "center", marginBottom: "15px" }}>

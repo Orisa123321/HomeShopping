@@ -5,22 +5,18 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { generateAiRecipe, showToast, DAYS_HEB } from "../utils/helpers";
 
 export function PantryView({ items = [], user, sharedListId }) {
-  // מצבי AI למתכונים
   const [inStockItems, setInStockItems] = useState([]);
   const [selectedIngredients, setSelectedIngredients] = useState([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiRecipe, setAiRecipe] = useState(null);
 
-  // מצבי הצעות חיסכון ודפוסי רכישה
   const [savingSuggestions, setSavingSuggestions] = useState([]);
   const [patterns, setPatterns] = useState([]);
   const [isCalculating, setIsCalculating] = useState(true);
 
-  // 1. סינון מוצרים שבמלאי למחולל המתכונים
   useEffect(() => {
     const active = items.filter((item) => item.current > 0);
     setInStockItems(active);
-    // כברירת מחדל, נבחר את כל המוצרים שבמלאי
     setSelectedIngredients(active.map((i) => i.name));
   }, [items]);
 
@@ -30,7 +26,6 @@ export function PantryView({ items = [], user, sharedListId }) {
     );
   };
 
-  // הפעלת השף החכם ליצירת מתכון מהמזווה
   const handleGenerateRecipe = async () => {
     if (selectedIngredients.length === 0) {
       showToast("נא לבחור לפחות מצרך אחד מהמזווה!", "error");
@@ -53,17 +48,14 @@ export function PantryView({ items = [], user, sharedListId }) {
     setIsAiLoading(false);
   };
 
-  // 2. חישוב חיזוי עלויות לשבוע הבא
   const costForecast = useMemo(() => {
     let predictedTotal = 0;
     let missingItemsCount = 0;
 
     items.forEach((item) => {
-      // מוצר שחסר או מתחת ליעד המלאי שלו
       if (item.current < item.target && !item.isBought) {
         missingItemsCount++;
-        // קבלת מחיר ממוצע מההיסטוריה שלו
-        let avgPrice = 12; // ברירת מחדל סבירה אם אין היסטוריה
+        let avgPrice = 12;
         if (item.priceHistory && item.priceHistory.length > 0) {
           const sum = item.priceHistory.reduce((a, b) => a + b.price, 0);
           avgPrice = sum / item.priceHistory.length;
@@ -79,14 +71,12 @@ export function PantryView({ items = [], user, sharedListId }) {
     };
   }, [items]);
 
-  // 3. זיהוי דפוסי קניות והצעות חיסכון חכמות בזמן אמת
   useEffect(() => {
     const analyzePantryIntelligence = async () => {
       setIsCalculating(true);
       const newPatterns = [];
       const newSavings = [];
 
-      // א. זיהוי דפוסים: מוצרים שנקנים הרבה ואין להם חידוש אוטומטי
       items.forEach((item) => {
         const purchaseCount = item.priceHistory ? item.priceHistory.length : 0;
         if (purchaseCount >= 3 && !item.recurringDay) {
@@ -98,9 +88,8 @@ export function PantryView({ items = [], user, sharedListId }) {
           });
         }
       });
-      setPatterns(newPatterns.slice(0, 3)); // נציג את ה-3 הבולטים ביותר
+      setPatterns(newPatterns.slice(0, 3));
 
-      // ב. הצעות חיסכון מבוססות חוכמת ההמונים
       try {
         const savingsPromises = items
           .filter((item) => item.priceHistory && item.priceHistory.length > 0)
@@ -111,13 +100,11 @@ export function PantryView({ items = [], user, sharedListId }) {
 
             if (snap.exists()) {
               const globalData = snap.data();
-              // נמצא את החנות הזולה ביותר ואת החנות שבה המשתמש קנה
               let cheapestStore = "";
               let cheapestPrice = Infinity;
               let userStore = item.store || "";
               let userPaidPrice = 0;
 
-              // מציאת מחיר המשתמש ההיסטורי האחרון
               if (item.priceHistory && item.priceHistory.length > 0) {
                 userPaidPrice = item.priceHistory[0].price;
                 if (!userStore) userStore = item.priceHistory[0].store || "";
@@ -137,14 +124,12 @@ export function PantryView({ items = [], user, sharedListId }) {
                 }
               });
 
-              // אם מצאנו חנות זולה יותר משמעותית מזו שהמשתמש קנה בה
               if (
                 cheapestStore &&
                 userStore &&
                 cheapestStore !== userStore &&
                 userPaidPrice > cheapestPrice
               ) {
-                // חישוב צריכה שנתית מוערכת (נניח קנייה פעם בשבועיים = 26 יחידות בשנה)
                 const yearlyUsage = 26;
                 const singleSaving = userPaidPrice - cheapestPrice;
                 const yearlySaving = singleSaving * yearlyUsage;
@@ -177,7 +162,6 @@ export function PantryView({ items = [], user, sharedListId }) {
     }
   }, [items]);
 
-  // הגדרת חידוש אוטומטי מהיר
   const handleSetRecurring = async (item, day) => {
     try {
       await updateDoc(doc(db, "groceries", item.id), {
@@ -211,7 +195,6 @@ export function PantryView({ items = [], user, sharedListId }) {
         </p>
       </div>
 
-      {/* ====== 1. חיזוי עלויות ====== */}
       <motion.div
         className="premium-card cost-forecast-card"
         initial={{ opacity: 0, y: 15 }}
@@ -244,7 +227,6 @@ export function PantryView({ items = [], user, sharedListId }) {
         </div>
       </motion.div>
 
-      {/* ====== 2. מה לבשל הערב? ====== */}
       <div className="premium-card">
         <h3 className="stats-section-title">🍳 מה לבשל הערב?</h3>
         <p
@@ -334,7 +316,6 @@ export function PantryView({ items = [], user, sharedListId }) {
         </AnimatePresence>
       </div>
 
-      {/* ====== 3. זיהוי דפוסים וחידוש אוטומטי ====== */}
       <div className="premium-card">
         <h3 className="stats-section-title">📊 זיהוי דפוסי קנייה</h3>
         {patterns.length === 0 ? (
@@ -382,7 +363,6 @@ export function PantryView({ items = [], user, sharedListId }) {
         )}
       </div>
 
-      {/* ====== 4. הצעות חיסכון אישיות ====== */}
       <div className="premium-card">
         <h3 className="stats-section-title">💡 הצעות חיסכון חכמות</h3>
         {isCalculating ? (

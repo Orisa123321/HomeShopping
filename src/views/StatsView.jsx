@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 
-// אמוג'י קטגוריות
 const CAT_EMOJI = {
   "מוצרי חלב וביצים": "🥛",
   "מאפייה ולחמים": "🥖",
@@ -16,7 +15,6 @@ const CAT_EMOJI = {
   כללי: "🛒",
 };
 
-// צבעים לגרף קטגוריות
 const CAT_COLORS = [
   "#7c3aed",
   "#f59e0b",
@@ -29,7 +27,6 @@ const CAT_COLORS = [
   "#6366f1",
 ];
 
-// אנימציית כניסה לכרטיסים
 const cardVariants = {
   hidden: { opacity: 0, y: 24 },
   visible: (i) => ({
@@ -43,14 +40,12 @@ export function StatsView({ stats, items = [] }) {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
-  // --- 1. הגדרת תקציב חודשי (נשמר ב-LocalStorage) ---
   const [monthlyBudget, setMonthlyBudget] = useState(() => {
     return Number(localStorage.getItem("monthly_budget")) || 1500;
   });
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState(monthlyBudget);
 
-  // --- 2. חישוב "האם חסכתם?" בהשוואה לממוצע הגלובלי ---
   const [savingsData, setSavingsData] = useState({
     totalSaved: 0,
     matchedCount: 0,
@@ -155,7 +150,6 @@ export function StatsView({ stats, items = [] }) {
     }
   };
 
-  // --- 3. גרף מגמות חודשי (6 חודשים אחורה) ---
   const monthlyTrends = useMemo(() => {
     const trends = [];
     const now = new Date();
@@ -191,7 +185,6 @@ export function StatsView({ stats, items = [] }) {
     }));
   }, [items]);
 
-  // --- 4. פילוח לפי קטגוריות ---
   const categoryBreakdown = useMemo(() => {
     const totals = {};
     let totalSpentThisMonth = 0;
@@ -224,7 +217,6 @@ export function StatsView({ stats, items = [] }) {
       .sort((a, b) => b.total - a.total);
   }, [items, currentMonth, currentYear]);
 
-  // --- 5. טופ 5 מוצרים יקרים ---
   const topExpensiveProducts = useMemo(() => {
     const productTotals = {};
 
@@ -258,19 +250,16 @@ export function StatsView({ stats, items = [] }) {
       .slice(0, 5);
   }, [items, currentMonth, currentYear]);
 
-  // חישובי תקציב
   const totalSpent = stats.totalSpent;
   const budgetUtilization = (totalSpent / monthlyBudget) * 100;
   const isOverBudget = budgetUtilization > 100;
   const isNearBudget = budgetUtilization >= 80 && !isOverBudget;
 
-  // שם החודש בעברית
   const currentMonthName = new Date().toLocaleDateString("he-IL", {
     month: "long",
     year: "numeric",
   });
 
-  // סה"כ הוצאות קטגוריות (לחישוב stacked bar)
   const totalCatSpent = categoryBreakdown.reduce((sum, c) => sum + c.total, 0);
 
   return (
@@ -583,7 +572,6 @@ export function StatsView({ stats, items = [] }) {
         📊 סיכום — {currentMonthName}
       </h2>
 
-      {/* ====== כרטיס תקציב חודשי ====== */}
       <motion.div
         className="premium-card"
         custom={0}
@@ -719,7 +707,6 @@ export function StatsView({ stats, items = [] }) {
         </AnimatePresence>
       </motion.div>
 
-      {/* ====== גרף מגמות חודשי ====== */}
       <motion.div
         className="premium-card"
         custom={1}
@@ -746,7 +733,6 @@ export function StatsView({ stats, items = [] }) {
         </div>
       </motion.div>
 
-      {/* ====== פילוח קטגוריות — Stacked Bar + רשימה ====== */}
       <motion.div
         className="premium-card"
         custom={2}
@@ -786,7 +772,6 @@ export function StatsView({ stats, items = [] }) {
               })}
             </div>
 
-            {/* רשימה מפורטת */}
             {categoryBreakdown.map((cat, i) => (
               <div key={cat.name} className="cat-breakdown-row">
                 <div className="cat-breakdown-info">
@@ -808,7 +793,6 @@ export function StatsView({ stats, items = [] }) {
         )}
       </motion.div>
 
-      {/* ====== האם חסכתם? ====== */}
       <motion.div
         className={`premium-card ${
           savingsData.isLoading
@@ -858,7 +842,6 @@ export function StatsView({ stats, items = [] }) {
         )}
       </motion.div>
 
-      {/* ====== Top 5 מוצרים יקרים ====== */}
       <motion.div
         className="premium-card"
         custom={4}
@@ -911,7 +894,6 @@ export function StatsView({ stats, items = [] }) {
         )}
       </motion.div>
 
-      {/* ====== הוצאות לפי רשתות ====== */}
       <motion.div
         className="premium-card"
         custom={5}

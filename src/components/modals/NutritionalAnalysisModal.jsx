@@ -22,7 +22,6 @@ const NutritionalAnalysisModal = ({ isOpen, onClose, items }) => {
         }
 
         setLoading(true);
-        // מסננים רק מוצרים שעדיין לא נקנו או את כל הסל - לפי בחירתך
         const itemsToAnalyze = items.filter(item => item.target > 0);
 
         const result = await analyzeCartNutritionally(itemsToAnalyze);

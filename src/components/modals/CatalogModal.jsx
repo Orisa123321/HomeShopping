@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 
-// המאגר המובנה (עם האייקונים היפים)
 const DEFAULT_CATALOG = {
   "🥛 מוצרי חלב וביצים": [
     "חלב 3%",
@@ -185,7 +184,6 @@ const DEFAULT_CATALOG = {
   ],
 };
 
-// פונקציה חכמה שמשדכת קטגוריות מה-API לקטגוריות המובנות שלנו
 const mapToEmojiCategory = (rawCategory) => {
   if (!rawCategory) return "📦 כללי";
   const cat = rawCategory.toLowerCase();
@@ -225,28 +223,23 @@ const CatalogModal = ({ isOpen, onClose, catalog, onAddItem }) => {
   const [expandedCat, setExpandedCat] = useState(null);
 
   const mergedCatalog = useMemo(() => {
-    // 1. מתחילים עם העתק נקי של המאגר המובנה
     const grouped = JSON.parse(JSON.stringify(DEFAULT_CATALOG));
-    grouped["📦 כללי"] = []; // מוסיפים קטגוריה כללית לשאריות
+    grouped["📦 כללי"] = [];
 
-    // 2. מוסיפים את כל מוצרי ה-API לתוך הקטגוריות היפות שלנו
     if (catalog) {
       catalog.forEach((item) => {
-        // מנחשים לאיזו קטגוריית אימוג'י זה שייך
         const mappedCategory = mapToEmojiCategory(item.category);
 
         if (!grouped[mappedCategory]) {
           grouped[mappedCategory] = [];
         }
 
-        // מוסיפים רק אם המוצר לא קיים שם כבר
         if (!grouped[mappedCategory].includes(item.name)) {
           grouped[mappedCategory].push(item.name);
         }
       });
     }
 
-    // 3. מסדרים אלפביתית כל קטגוריה ומוחקים קטגוריות ריקות
     Object.keys(grouped).forEach((cat) => {
       if (grouped[cat].length === 0) {
         delete grouped[cat];
@@ -267,15 +260,14 @@ const CatalogModal = ({ isOpen, onClose, catalog, onAddItem }) => {
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: "550px",
-          height: "85vh", // גובה קבוע
+          height: "85vh",
           display: "flex",
           flexDirection: "column",
-          padding: "0", // מורידים פדינג חיצוני כדי שהכותרת תידבק למעלה
+          padding: "0",
           borderRadius: "16px",
-          overflow: "hidden", // שומר על הפינות המעוגלות
+          overflow: "hidden",
         }}
       >
-        {/* כותרת קבועה עליונה */}
         <div
           style={{
             display: "flex",
@@ -320,7 +312,6 @@ const CatalogModal = ({ isOpen, onClose, catalog, onAddItem }) => {
           </button>
         </div>
 
-        {/* האזור הנגלל עם הקטגוריות */}
         <div
           style={{
             flex: 1,
@@ -389,7 +380,6 @@ const CatalogModal = ({ isOpen, onClose, catalog, onAddItem }) => {
                       <button
                         key={idx}
                         onClick={(e) => {
-                          // מעבירים את הקטגוריה המקורית ללא האימוג'י כדי שזה יתחבר יפה במזווה
                           const cleanCatName = cat
                             .replace(/[^\u0590-\u05FF\s]/g, "")
                             .trim();
@@ -399,7 +389,6 @@ const CatalogModal = ({ isOpen, onClose, catalog, onAddItem }) => {
                             qty: 1,
                           });
 
-                          // אפקט הלחיצה
                           const btn = e.currentTarget;
                           btn.style.background = "#22c55e";
                           btn.style.color = "white";
@@ -439,7 +428,6 @@ const CatalogModal = ({ isOpen, onClose, catalog, onAddItem }) => {
             ))}
         </div>
 
-        {/* כפתור סגירה תחתון שנדבק לתחתית */}
         <div
           style={{
             padding: "15px 20px",

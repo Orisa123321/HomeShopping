@@ -1,24 +1,20 @@
 import React from "react";
 
 const LeaderboardModal = ({ isOpen, onClose, items }) => {
-  // אם החלון לא אמור להיות פתוח, אל תצייר כלום
   if (!isOpen) return null;
 
-  // חישוב הסטטיסטיקות (הוצאנו את זה החוצה ועכשיו זה מסודר!)
   const stats = {};
   items.forEach((item) => {
-    // ספירת הוספות
     const adder = item.addedBy || "משפחה (ישן)";
     if (!stats[adder]) stats[adder] = { added: 0, bought: 0, score: 0 };
     stats[adder].added += 1;
-    stats[adder].score += 5; // 5 נקודות על כל הוספה
+    stats[adder].score += 5;
 
-    // ספירת קניות
     if (item.isBought) {
       const buyer = item.boughtBy || item.addedBy || "משפחה (ישן)";
       if (!stats[buyer]) stats[buyer] = { added: 0, bought: 0, score: 0 };
       stats[buyer].bought += 1;
-      stats[buyer].score += 15; // 15 נקודות על כל קנייה!
+      stats[buyer].score += 15;
     }
   });
 

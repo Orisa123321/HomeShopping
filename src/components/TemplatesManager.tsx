@@ -1,4 +1,4 @@
-// src/components/TemplatesManager.jsx
+// src/components/TemplatesManager.tsx
 import React, { useState, useEffect } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
@@ -8,12 +8,27 @@ import {
 } from "../utils/templateService";
 import { showToast } from "../utils/helpers";
 
-export function TemplatesManager({ userId, currentList }) {
-  const [templates, setTemplates] = useState([]);
+interface Template {
+  id: string;
+  name: string;
+  items: any[];
+  createdBy?: string;
+  createdAt?: string;
+}
+
+interface TemplatesManagerProps {
+  userId: string;
+  currentList: any[];
+}
+
+export function TemplatesManager({
+  userId,
+  currentList,
+}: TemplatesManagerProps) {
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  // משיכת התבניות של המשתמש מהשרת
   const fetchTemplates = async () => {
     try {
       const q = query(
@@ -21,10 +36,13 @@ export function TemplatesManager({ userId, currentList }) {
         where("createdBy", "==", userId),
       );
       const querySnapshot = await getDocs(q);
-      const list = [];
+
+      const list: Template[] = [];
+
       querySnapshot.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() });
+        list.push({ id: doc.id, ...doc.data() } as Template);
       });
+
       setTemplates(list);
     } catch (e) {
       console.error(e);
@@ -75,7 +93,6 @@ export function TemplatesManager({ userId, currentList }) {
             boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
           }}
         >
-          {/* שמירת תבנית חדשה */}
           <h4 style={{ margin: "0 0 10px" }}>
             💾 שמור את הרשימה הנוכחית כתבנית
           </h4>
@@ -109,7 +126,6 @@ export function TemplatesManager({ userId, currentList }) {
             </button>
           </div>
 
-          {/* רשימת התבניות הקיימות */}
           <h4 style={{ margin: "0 0 10px" }}>📋 התבניות שלי</h4>
           {templates.length === 0 ? (
             <p style={{ fontSize: "13px", color: "#666" }}>

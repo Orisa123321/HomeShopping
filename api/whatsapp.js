@@ -34,7 +34,6 @@ export default async function handler(req, res) {
     const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // --- הקסם: זיהוי אתרים (מתכונים) ---
     let websiteContent = "";
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const urls = incomingMsg.match(urlRegex);
@@ -50,7 +49,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- הפרומפט המשודרג הכולל ניתוב לחנויות ---
     const prompt = `
       אתה מנהל רשימת קניות חכם. המשתמש שלח: "${incomingMsg}".
       ${websiteContent ? `שים לב! המשתמש שלח קישור למתכון. הנה קוד האתר של המתכון:\n${websiteContent}\nקרא אותו וחלץ ממנו את המצרכים האמיתיים!` : ""}
@@ -98,9 +96,7 @@ export default async function handler(req, res) {
         );
     }
 
-    // הוספת מוצרים או מתכונים (עם תמיכה בחנויות מרובות!)
     if (aiData.intent === "add" || aiData.intent === "import_recipe") {
-      // 1. נשלוף את החנויות הקיימות של המשתמש כדי לא ליצור כפילויות
       const storesSnapshot = await db
         .collection("stores")
         .where("listId", "==", LIST_ID)
@@ -113,7 +109,6 @@ export default async function handler(req, res) {
       for (const item of aiData.items) {
         const targetStore = item.store || "סופרמרקט";
 
-        // אם החנות לא קיימת ברשימה, האפליקציה תיצור אותה אוטומטית!
         if (!existingStores.includes(targetStore)) {
           await db.collection("stores").add({
             name: targetStore,
@@ -156,7 +151,6 @@ export default async function handler(req, res) {
         );
     }
 
-    // --- שאר הפעולות (נשאר ללא שינוי, תומך בעדכון מחיקה לפי שם) ---
     if (aiData.intent === "update_stock") {
       const snapshot = await db
         .collection("groceries")

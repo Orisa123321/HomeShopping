@@ -1,14 +1,19 @@
+// src/utils/helpers.ts
 import { getAiRecipe, getCartNutrition } from "./aiService";
 export { genAI } from "./aiService";
-// הפונקציה לקריאה ל-AI (מתכונים) עם מנגנון גיבוי
-export const generateAiRecipe = async (inputData, isUrl = false) => {
+
+export const generateAiRecipe = async (
+  inputData: string,
+  isUrl: boolean = false,
+) => {
   return getAiRecipe(inputData, isUrl);
 };
-// פונקציות חישוב פג תוקף
-export const getExpStatus = (dateStr) => {
+
+export const getExpStatus = (dateStr?: string | null): string => {
   if (!dateStr) return "";
   const diffDays = Math.ceil(
-    (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24),
+    (new Date(dateStr).getTime() - new Date().getTime()) /
+      (1000 * 60 * 60 * 24),
   );
   if (diffDays < 0) return "expired";
   if (diffDays <= 3) return "danger";
@@ -16,10 +21,11 @@ export const getExpStatus = (dateStr) => {
   return "";
 };
 
-export const getExpText = (dateStr) => {
+export const getExpText = (dateStr?: string | null): string => {
   if (!dateStr) return "";
   const diffDays = Math.ceil(
-    (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24),
+    (new Date(dateStr).getTime() - new Date().getTime()) /
+      (1000 * 60 * 60 * 24),
   );
   if (diffDays < 0) return "פג תוקף!";
   if (diffDays === 0) return "פג היום!";
@@ -27,8 +33,7 @@ export const getExpText = (dateStr) => {
   return "";
 };
 
-// קבועים של ימים
-export const DAYS_HEB = [
+export const DAYS_HEB: string[] = [
   "ראשון",
   "שני",
   "שלישי",
@@ -37,9 +42,17 @@ export const DAYS_HEB = [
   "שישי",
   "שבת",
 ];
-export const DAYS_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+export const DAYS_KEYS: string[] = [
+  "sun",
+  "mon",
+  "tue",
+  "wed",
+  "thu",
+  "fri",
+  "sat",
+];
 
-export const ISRAELI_SUPERMARKETS = [
+export const ISRAELI_SUPERMARKETS: string[] = [
   "שופרסל",
   "רמי לוי",
   "יוחננוף",
@@ -64,17 +77,15 @@ export const ISRAELI_SUPERMARKETS = [
   "אחר",
 ];
 
-// פונקציה לניתוח תזונתי של העגלה באמצעות AI עם מנגנון גיבוי
-export const analyzeCartNutritionally = async (itemsList) => {
+export const analyzeCartNutritionally = async (itemsList: any[]) => {
   return getCartNutrition(itemsList);
 };
-export /**
- * Toast Notification במקום alert()
- * @param {string} message - ההודעה להצגה
- * @param {string} type - 'success', 'error', או 'info'
- * @param {number} duration - זמן הצגה באלפיות שנייה
- */
-function showToast(message, type = "success", duration = 3000) {
+
+export function showToast(
+  message: string,
+  type: "success" | "error" | "info" | string = "success",
+  duration: number = 3000,
+) {
   let container = document.getElementById("toast-container");
   if (!container) {
     container = document.createElement("div");
@@ -89,7 +100,6 @@ function showToast(message, type = "success", duration = 3000) {
 
   container.appendChild(toast);
 
-  // העלמת הטוסט אחרי הזמן שהוגדר
   setTimeout(() => {
     toast.classList.add("hide");
     toast.addEventListener("animationend", () => toast.remove());
@@ -97,13 +107,11 @@ function showToast(message, type = "success", duration = 3000) {
 }
 
 /**
- * Bottom Sheet Prompt במקום prompt()
- * מופעל בצורה אסינכרונית ומחזיר Promise
- * @param {string} title - כותרת החלון (למשל: "הכנס שם פריט")
- * @param {string} defaultValue - ערך התחלתי לתיבת הטקסט (אופציונלי)
- * @returns {Promise<string|null>} - מחזיר את הטקסט או null אם בוטל
  */
-export function showPrompt(title, defaultValue = "") {
+export function showPrompt(
+  title: string,
+  defaultValue: string = "",
+): Promise<string | null> {
   return new Promise((resolve) => {
     let overlay = document.getElementById("bottom-sheet-overlay");
     if (!overlay) {
@@ -128,28 +136,34 @@ export function showPrompt(title, defaultValue = "") {
       document.body.appendChild(overlay);
     }
 
-    const titleEl = document.getElementById("bottom-sheet-title");
-    const inputEl = document.getElementById("bottom-sheet-input");
-    const closeBtn = document.getElementById("bottom-sheet-close");
-    const cancelBtn = document.getElementById("bottom-sheet-cancel");
-    const confirmBtn = document.getElementById("bottom-sheet-confirm");
+    const titleEl = document.getElementById(
+      "bottom-sheet-title",
+    ) as HTMLElement;
+    const inputEl = document.getElementById(
+      "bottom-sheet-input",
+    ) as HTMLInputElement;
+    const closeBtn = document.getElementById(
+      "bottom-sheet-close",
+    ) as HTMLElement;
+    const cancelBtn = document.getElementById(
+      "bottom-sheet-cancel",
+    ) as HTMLElement;
+    const confirmBtn = document.getElementById(
+      "bottom-sheet-confirm",
+    ) as HTMLElement;
 
-    // אתחול נתונים
     titleEl.innerText = title;
     inputEl.value = defaultValue;
 
-    // הצגת ה-BottomSheet
     overlay.classList.add("active");
-    setTimeout(() => inputEl.focus(), 100); // מיקוד אוטומטי על תיבת הטקסט
+    setTimeout(() => inputEl.focus(), 100);
 
-    // פונקציה לסגירה
-    const closeSheet = (returnValue) => {
-      overlay.classList.remove("active");
+    const closeSheet = (returnValue: string | null) => {
+      overlay!.classList.remove("active");
       cleanup();
       resolve(returnValue);
     };
 
-    // ניקוי מאזיני אירועים כדי למנוע כפילויות בפעמים הבאות
     const cleanup = () => {
       closeBtn.removeEventListener("click", onCancel);
       cancelBtn.removeEventListener("click", onCancel);
@@ -159,15 +173,14 @@ export function showPrompt(title, defaultValue = "") {
 
     const onCancel = () => closeSheet(null);
     const onConfirm = () => {
-      // אם לא הוקלד כלום - אל תחזיר מחרוזת ריקה (התנהגות דומה לביטול/הגנה)
       const val = inputEl.value.trim();
       closeSheet(val || null);
     };
-    const onKeyPress = (e) => {
+
+    const onKeyPress = (e: KeyboardEvent) => {
       if (e.key === "Enter") onConfirm();
     };
 
-    // חיבור המאזינים
     closeBtn.addEventListener("click", onCancel);
     cancelBtn.addEventListener("click", onCancel);
     confirmBtn.addEventListener("click", onConfirm);
@@ -176,13 +189,11 @@ export function showPrompt(title, defaultValue = "") {
 }
 
 /**
- * Bottom Sheet Confirm במקום confirm()
- * מופעל בצורה אסינכרונית ומחזיר Promise עם true/false
- * @param {string} title - השאלה למשתמש (למשל: "האם אתה בטוח שברצונך למחוק?")
- * @param {string} confirmText - טקסט לכפתור האישור (ברירת מחדל: "אישור")
- * @returns {Promise<boolean>} - מחזיר true אם אישר, false אם ביטל
  */
-export function showConfirm(title, confirmText = "אישור") {
+export function showConfirm(
+  title: string,
+  confirmText: string = "אישור",
+): Promise<boolean> {
   return new Promise((resolve) => {
     let overlay = document.getElementById("bottom-sheet-overlay");
     if (!overlay) {
@@ -192,8 +203,6 @@ export function showConfirm(title, confirmText = "אישור") {
       document.body.appendChild(overlay);
     }
 
-    // מזריקים את ה-HTML (ללא ה-input שהיה בפרומפט)
-    // הוספנו צבע אדום לכפתור האישור למקרה של מחיקה (אפשר לשנות ל-var(--primary) אם זה לא מחיקה)
     overlay.innerHTML = `
       <div class="bottom-sheet">
         <div class="bottom-sheet-header">
@@ -207,24 +216,28 @@ export function showConfirm(title, confirmText = "אישור") {
       </div>
     `;
 
-    const titleEl = document.getElementById("bottom-sheet-title");
-    const closeBtn = document.getElementById("bottom-sheet-close");
-    const cancelBtn = document.getElementById("bottom-sheet-cancel");
-    const confirmBtn = document.getElementById("bottom-sheet-confirm");
+    const titleEl = document.getElementById(
+      "bottom-sheet-title",
+    ) as HTMLElement;
+    const closeBtn = document.getElementById(
+      "bottom-sheet-close",
+    ) as HTMLElement;
+    const cancelBtn = document.getElementById(
+      "bottom-sheet-cancel",
+    ) as HTMLElement;
+    const confirmBtn = document.getElementById(
+      "bottom-sheet-confirm",
+    ) as HTMLElement;
 
     titleEl.innerText = title;
-
-    // הצגת ה-BottomSheet
     overlay.classList.add("active");
 
-    // פונקציה לסגירה
-    const closeSheet = (returnValue) => {
-      overlay.classList.remove("active");
+    const closeSheet = (returnValue: boolean) => {
+      overlay!.classList.remove("active");
       cleanup();
       resolve(returnValue);
     };
 
-    // ניקוי מאזינים
     const cleanup = () => {
       closeBtn.removeEventListener("click", onCancel);
       cancelBtn.removeEventListener("click", onCancel);
@@ -234,7 +247,6 @@ export function showConfirm(title, confirmText = "אישור") {
     const onCancel = () => closeSheet(false);
     const onConfirm = () => closeSheet(true);
 
-    // חיבור המאזינים
     closeBtn.addEventListener("click", onCancel);
     cancelBtn.addEventListener("click", onCancel);
     confirmBtn.addEventListener("click", onConfirm);

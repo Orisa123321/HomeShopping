@@ -8,7 +8,6 @@ if (firebaseAdmin.apps.length === 0) {
 }
 const db = firebaseAdmin.firestore();
 
-// הרשתות שאנחנו מחפשים
 const TARGET_CHAINS = [
   "רמי לוי",
   "שופרסל",
@@ -24,7 +23,7 @@ const TARGET_CHAINS = [
 
 exports.dailysupermarketscraper = onSchedule(
   {
-    schedule: "0,30 * * * *", // רץ כל חצי שעה
+    schedule: "0,30 * * * *",
     timeZone: "Asia/Jerusalem",
     region: "europe-west1",
     timeoutSeconds: 540,
@@ -34,7 +33,7 @@ exports.dailysupermarketscraper = onSchedule(
     logger.log("🚀 מתחיל סבב שאיבת מחירים חסכוני ומתקדם (עד 150 מוצרים)...");
 
     try {
-      const API_TOKEN = "d20a152b-22cd-4503-a439-2e0e8bb6d052"; // <--- ⚠️ הטוקן שלך ⚠️
+      const API_TOKEN = "d20a152b-22cd-4503-a439-2e0e8bb6d052";
       const timestamp = Date.now();
       const dateStr = new Date().toLocaleDateString("he-IL");
 
@@ -51,7 +50,6 @@ exports.dailysupermarketscraper = onSchedule(
         }
       };
 
-      // --- 1. שולפים מוצרי VIP דחופים (מקסימום 50) ---
       const prioritySnapshot = await db
         .collection("product_catalog")
         .where("priorityUpdate", "==", true)
@@ -69,7 +67,6 @@ exports.dailysupermarketscraper = onSchedule(
         }
       });
 
-      // --- 2. שולפים מוצרים רגילים עם "סמן" כדי לחסוך קריאות! ---
       const limitCount = 150 - allProducts.length;
       if (limitCount > 0) {
         const stateDocRef = db.collection("system").doc("crawlerState");
@@ -87,7 +84,6 @@ exports.dailysupermarketscraper = onSchedule(
 
         let regularSnapshot = await query.get();
 
-        // אם הגענו לסוף הקטלוג, מתחילים שוב מההתחלה
         if (regularSnapshot.empty) {
           logger.log("🔄 הגענו לסוף הקטלוג, מתחילים סבב חדש מההתחלה!");
           query = db
@@ -108,7 +104,6 @@ exports.dailysupermarketscraper = onSchedule(
           }
         });
 
-        // שומרים את מיקום הסמן לפעם הבאה (חוסך לנו 9000 קריאות!)
         if (regularSnapshot.docs.length > 0) {
           const newLastId =
             regularSnapshot.docs[regularSnapshot.docs.length - 1].id;
@@ -119,7 +114,6 @@ exports.dailysupermarketscraper = onSchedule(
 
       logger.log(`נבחרו ${allProducts.length} מוצרים לסבב הנוכחי.`);
 
-      // --- 3. בקשות למשיכת המחירים מול ה-API ---
       const chunkSize = 10;
       for (let i = 0; i < allProducts.length; i += chunkSize) {
         const chunk = allProducts.slice(i, i + chunkSize);
@@ -132,14 +126,13 @@ exports.dailysupermarketscraper = onSchedule(
                 Authorization: `Bearer ${API_TOKEN}`,
                 Accept: "application/json",
               },
-              validateStatus: () => true, // מאפשר לנו לטפל בשגיאות 404 בעצמנו ללא קריסת הקוד
+              validateStatus: () => true,
             })
             .then((res) => ({ product, status: res.status, data: res.data }));
         });
 
         const results = await Promise.allSettled(promises);
 
-        // --- 4. ניתוח התוצאות וכתיבה למסד ---
         for (let j = 0; j < results.length; j++) {
           const result = results[j];
           const currentProduct = chunk[j];
@@ -155,7 +148,6 @@ exports.dailysupermarketscraper = onSchedule(
             const data = result.value.data;
             let chainList = [];
 
-            // זיהוי מבנה הנתונים
             if (data && Array.isArray(data.chainComparison)) {
               chainList = data.chainComparison;
             } else if (Array.isArray(data)) {
@@ -228,7 +220,6 @@ exports.dailysupermarketscraper = onSchedule(
             }
           }
 
-          // רישום המחירים לאוסף הכללי
           if (hasPrices) {
             const globalDocRef = db
               .collection("global_prices")
@@ -238,7 +229,6 @@ exports.dailysupermarketscraper = onSchedule(
             totalUpdated++;
           }
 
-          // התיקון הקריטי: עדכון הקטלוג גם בהצלחה וגם בכישלון, תוך הסרת דגל ה-VIP במידת הצורך
           let catalogUpdates = {
             hasPrice: hasPrices,
             lastScraped: timestamp,
@@ -274,14 +264,13 @@ exports.dailysupermarketscraper = onSchedule(
 );
 const { onRequest } = require("firebase-functions/v2/https");
 
-// פונקציה חד-פעמית למילוי הקטלוג הראשוני
 exports.seedCatalog = onRequest(
   { timeoutSeconds: 540, memory: "512MiB", region: "europe-west1" },
   async (req, res) => {
     logger.log("🛠️ מתחיל שאיבת קטלוג מוצרים מסיבית...");
 
     try {
-      const API_TOKEN = "d20a152b-22cd-4503-a439-2e0e8bb6d052"; // <--- ⚠️ שים את הטוקן שלך כאן שוב! ⚠️
+      const API_TOKEN = "d20a152b-22cd-4503-a439-2e0e8bb6d052";
 
       const searchTerms = [
         "חלב",

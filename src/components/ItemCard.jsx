@@ -84,7 +84,6 @@ export function ItemCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const expStatus = getExpStatus(item.expirationDate);
   const expText = getExpText(item.expirationDate);
-  // סנכרון מצב מורחב בהתאם לפתיחת/סגירת הקטגוריה
   useEffect(() => {
     if (categoryExpanded !== undefined) {
       setIsExpanded(categoryExpanded);
@@ -106,12 +105,10 @@ export function ItemCard({
         }
       }}
       className={`item-card ${isExpanded ? "expanded" : "compact"}`}
-      // לחיצה על כל הכרטיס המכווץ רק תפתח אותו
       onClick={() => {
         if (!isExpanded) setIsExpanded(true);
       }}
     >
-      {/* שורה ראשית — תמיד נראית */}
       <div
         role="button"
         tabIndex={0}
@@ -123,7 +120,6 @@ export function ItemCard({
           }
         }}
         className="item-compact-row"
-        // לחיצה על השורה הראשית כשהכרטיס פתוח - תסגור אותו
         onClick={(e) => {
           if (isExpanded) {
             e.stopPropagation();
@@ -146,7 +142,7 @@ export function ItemCard({
         </span>
         <button
           onClick={(e) => {
-            e.stopPropagation(); // מונע לחלוטין השפעה על פתיחת/סגירת הכרטיס!
+            e.stopPropagation();
             updateItemStatus(item.id, item.current, !item.isBought);
           }}
           className={`cart-btn-mini ${item.isBought ? "active" : ""}`}
@@ -155,7 +151,6 @@ export function ItemCard({
         </button>
       </div>
 
-      {/* תוכן מורחב — נראה רק בלחיצה */}
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
@@ -165,7 +160,6 @@ export function ItemCard({
             className="item-expanded"
             style={{ overflow: "hidden" }}
           >
-            {/* הערה */}
             <input
               type="text"
               className="item-note"
@@ -179,7 +173,6 @@ export function ItemCard({
               }
             />
 
-            {/* כמויות */}
             <div className="controls-wrap">
               <div className="qty-stack">
                 <div className="qty-row">
@@ -229,7 +222,6 @@ export function ItemCard({
               </div>
             </div>
 
-            {/* כפתורי פעולה */}
             <div className="item-actions-row">
               <button
                 className="add-price-btn"
@@ -271,7 +263,6 @@ export function ItemCard({
               </button>
             </div>
 
-            {/* תוקף */}
             <div className="exp-wrap">
               <input
                 type="date"
@@ -287,7 +278,6 @@ export function ItemCard({
               {expStatus && <span className="exp-alert-text">{expText}</span>}
             </div>
 
-            {/* היסטוריית מחירים */}
             {item.priceHistory && item.priceHistory.length > 0 && (
               <div className="price-history-container">
                 {item.priceHistory.map((h, index) => (
@@ -309,7 +299,6 @@ export function ItemCard({
               </div>
             )}
 
-            {/* כפתורי מחיקה וסגירה */}
             <div
               style={{
                 display: "flex",

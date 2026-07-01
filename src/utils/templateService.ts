@@ -1,23 +1,31 @@
-// src/utils/templateService.js
+// src/utils/templateService.ts
 import { db } from "../firebaseConfig";
 import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   query,
   where,
   writeBatch,
   doc,
 } from "firebase/firestore";
 import { showToast } from "./helpers";
+import { ShoppingItem } from "../types";
+
+interface TemplateItem {
+  name: string;
+  category: string;
+  target: number;
+  unit: string;
+}
 
 /**
- * שמירת הרשימה הנוכחית כתבנית חדשה
  */
 export const saveCurrentListAsTemplate = async (
-  userId,
-  templateName,
-  currentList,
+  userId: string,
+  templateName: string,
+  currentList: any[],
 ) => {
   if (!currentList || currentList.length === 0) {
     showToast("הרשימה הנוכחית ריקה, אין מה לשמור כתבנית", "error");
@@ -25,8 +33,7 @@ export const saveCurrentListAsTemplate = async (
   }
 
   try {
-    // מסננים רק את הנתונים ההכרחיים לשמירה בתבנית (שם, קטגוריה, כמות יעד, יחידה)
-    const items = currentList.map((item) => ({
+    const items: TemplateItem[] = currentList.map((item) => ({
       name: item.name,
       category: item.category || "כללי",
       target: item.target || 1,
@@ -37,7 +44,7 @@ export const saveCurrentListAsTemplate = async (
       name: templateName,
       createdBy: userId,
       createdAt: new Date().toISOString(),
-      isPublic: false, // לשיתוף קהילתי בעתיד
+      isPublic: false,
       items: items,
     };
 
@@ -50,15 +57,13 @@ export const saveCurrentListAsTemplate = async (
 };
 
 /**
- * יבוא תבנית לרשימה הפעילה של המשתמש
  */
 export const importTemplateToList = async (
-  userId,
-  templateId,
-  existingItems,
+  userId: string,
+  templateId: string,
+  existingItems: any[],
 ) => {
   try {
-    // 1. קריאת נתוני התבנית
     const templateRef = doc(db, "templates", templateId);
     const templateSnap = await getDoc(templateRef);
     if (!templateSnap.exists()) {
@@ -70,22 +75,18 @@ export const importTemplateToList = async (
     const batch = writeBatch(db);
     const groceriesRef = collection(db, "groceries");
 
-    // 2. הוספת המוצרים מהתבנית לרשימה הנוכחית
-    template.items.forEach((item) => {
-      // בדיקה האם המוצר כבר קיים ברשימה למניעת כפילויות
+    template.items.forEach((item: TemplateItem) => {
       const exists = existingItems.find(
         (existing) => existing.name.toLowerCase() === item.name.toLowerCase(),
       );
 
       if (exists) {
-        // אם המוצר קיים, נעדכן את כמות היעד (נוסיף עליה או נשנה לגבוהה מביניהן)
         const itemRef = doc(db, "groceries", exists.id);
         batch.update(itemRef, {
-          target: Math.max(exists.target, item.target),
-          isBought: false, // מחזיר לקנייה
+          target: Math.max(exists.target || 1, item.target),
+          isBought: false,
         });
       } else {
-        // אם מוצר חדש, נוסיף אותו
         const newDocRef = doc(groceriesRef);
         batch.set(newDocRef, {
           name: item.name,
@@ -94,7 +95,7 @@ export const importTemplateToList = async (
           current: 0,
           unit: item.unit,
           isBought: false,
-          listId: userId, // הרשימה המשפחתית / אישית
+          listId: userId,
           createdAt: new Date().toISOString(),
           order: Date.now(),
         });
@@ -103,7 +104,7 @@ export const importTemplateToList = async (
 
     await batch.commit();
     showToast("🎉 כל פריטי התבנית יובאו בהצלחה!", "success");
-  } catch (error) {
+  } catch (error: any) {
     console.error("שגיאה ביבוא תבנית:", error);
     showToast("לא הצלחנו לייבא את התבנית", "error");
   }

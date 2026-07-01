@@ -55,19 +55,13 @@ import { getAiCategorization, getAiMergeSuggestions } from "./utils/aiService";
 import AppGuide from "./components/modals/AppGuide";
 import LandingPage from "./components/LandingPage";
 
-// מכונת הכביסה של שמות המוצרים מה-API
 const cleanProductName = (name) => {
   if (!name) return "";
   let cleaned = name;
-  // מסיר תווים מוזרים בהתחלה או בסוף כמו + * | -
   cleaned = cleaned.replace(/^[+*|\-\s]+|[+*|\-\s]+$/g, "");
-  // מסיר מספרים בסוגריים בתחילת השם (כמו "(20)")
   cleaned = cleaned.replace(/^\(\d+\)\s*/, "");
-  // מסיר מילים מערכתיות מוזרות מה-API
   cleaned = cleaned.replace(/\(מלקפול\)/g, "");
-  // הופך "גר'" או "ג'" ל-"גרם" שייראה מקצועי
   cleaned = cleaned.replace(/ גר'| ג'/g, " גרם");
-  // מנקה רווחים כפולים
   cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
   return cleaned;
 };
@@ -83,21 +77,20 @@ const seedCatalogDatabase = async () => {
   try {
     console.log("מתחיל לזרוע 1,000 מוצרים בקבוצות חכמות...");
 
-    const chunkSize = 400; // מעלים בקבוצות של 400 כדי לא לעבור את המגבלה של 500
+    const chunkSize = 400;
 
     for (let i = 0; i < SUPERMARKET_STARTER_PACK.length; i += chunkSize) {
       const chunk = SUPERMARKET_STARTER_PACK.slice(i, i + chunkSize);
-      const batch = writeBatch(db); // פותחים ארגז משלוח חדש לכל קבוצה
+      const batch = writeBatch(db);
 
       chunk.forEach((product) => {
-        // מנקים את השם מלוכסנים כדי שפיירבייס לא יחשוב שזה נתיב מסובך
         const safeId = product.name.replace(/\//g, "-");
 
         const docRef = doc(db, "product_catalog", safeId);
         batch.set(
           docRef,
           {
-            name: product.name, // נשמור את השם המקורי והנקי בפנים ליתר ביטחון
+            name: product.name,
             barcode: product.barcode,
             addedAt: Date.now(),
             isSeeded: true,
@@ -106,11 +99,11 @@ const seedCatalogDatabase = async () => {
         );
       });
 
-      await batch.commit(); // משגרים את הקבוצה הנוכחית לשרת
+      await batch.commit();
       console.log(`עודכן בהצלחה מטח של ${chunk.length} מוצרים...`);
     }
 
-    showToast("🎉 כל 1,000 המוצרים הועלו בהצלחה לקטלוג המרכזי!", "success"); // ירוק
+    showToast("🎉 כל 1,000 המוצרים הועלו בהצלחה לקטלוג המרכזי!", "success");
   } catch (error) {
     console.error("שגיאה בזריעת הקטלוג ההמוני:", error);
   }
@@ -199,7 +192,6 @@ export const guessCategory = (name) => {
   return "כללי";
 };
 
-// 1. מילון מילים נרדפות חכם בעברית לשיפור ה-Autocomplete
 const SYNONYMS = {
   "קוטג'": ["גבינת קוטג'", "קוטג"],
   קוטג: ["גבינת קוטג'", "קוטג'"],
@@ -224,7 +216,6 @@ const SYNONYMS = {
   ביצים: ["ביצה", "תבנית ביצים"],
 };
 
-// 2. פונקציית מרחק לוינשטיין (Levenshtein Distance) לזיהוי ותיקון שגיאות כתיב
 const getLevenshteinDistance = (a, b) => {
   const tmp = [];
   let i, j;
@@ -242,37 +233,33 @@ const getLevenshteinDistance = (a, b) => {
   return tmp[a.length][b.length];
 };
 
-// 3. אלגוריתם דירוג רלוונטיות (Fuzzy Relevance Scoring)
 const calculateFuzzyScore = (query, target) => {
   const q = query.toLowerCase().trim();
   const t = target.toLowerCase().trim();
 
-  if (q === t) return 1000; // התאמה מדויקת מושלמת
-  if (t.startsWith(q)) return 800 - t.length; // מתחיל במילת החיפוש (דירוג גבוה יותר לקצרים)
-  if (t.includes(q)) return 500 - t.length; // מכיל את מילת החיפוש
+  if (q === t) return 1000;
+  if (t.startsWith(q)) return 800 - t.length;
+  if (t.includes(q)) return 500 - t.length;
 
-  // בדיקת מילים נרדפות
   for (const [key, synonyms] of Object.entries(SYNONYMS)) {
     if (q.includes(key) || key.includes(q)) {
       for (const syn of synonyms) {
         if (t.includes(syn) || syn.includes(t)) {
-          return 400 - t.length; // בוסט למילים נרדפות
+          return 400 - t.length;
         }
       }
     }
   }
 
-  // תיקון שגיאות כתיב (מאפשר שגיאה אחת למילים קצרות, ושתיים למילים ארוכות)
   const distance = getLevenshteinDistance(q, t);
   const maxAllowedDistance = q.length > 4 ? 2 : 1;
   if (distance <= maxAllowedDistance && q.length >= 3) {
-    return 300 - distance * 50; // ציון תיקון שגיאת כתיב
+    return 300 - distance * 50;
   }
 
-  return 0; // אין התאמה
+  return 0;
 };
 
-// 4. זיהוי אוטומטי של יחידות מידה, כמויות וקטגוריות מומלצות על פי שם המוצר
 export const getSmartDefaults = (name) => {
   const n = name.toLowerCase().trim();
   let target = 1;
@@ -317,7 +304,7 @@ export const getSmartDefaults = (name) => {
     n.includes("פחית")
   ) {
     unit = "יח'";
-    target = 6; // שישייה כברירת מחדל
+    target = 6;
   } else if (
     n.includes("חמאה") ||
     n.includes("שוקולד") ||
@@ -325,7 +312,7 @@ export const getSmartDefaults = (name) => {
     n.includes("חטיף")
   ) {
     unit = "יח'";
-    target = 2; // כי תמיד צריך עוד אחד
+    target = 2;
   }
 
   return { target, unit, category: guessCategory(name) };
@@ -343,11 +330,10 @@ function App() {
   const [recipes, setRecipes] = useState([]);
   const [weeklyPlan, setWeeklyPlan] = useState({});
   const [activeStore, setActiveStore] = useState("סופרמרקט");
-  // מצבים לבאנר קוקיז ולחלונות המשפטיים
   const [showCookieBanner, setShowCookieBanner] = useState(
     localStorage.getItem("cookieConsent") !== "true",
   );
-  const [activeLegalModal, setActiveLegalModal] = useState(null); // יכול להיות: 'terms', 'privacy', 'accessibility'
+  const [activeLegalModal, setActiveLegalModal] = useState(null);
 
   const [categoryOrder, setCategoryOrder] = useState([]);
   const [collapsedCats, setCollapsedCats] = useState({});
@@ -371,12 +357,11 @@ function App() {
   const [isListening, setIsListening] = useState(false);
   const [isReceiptLoading, setIsReceiptLoading] = useState(false);
 
-  const [categoryModalData, setCategoryModalData] = useState(null); // חלונית סידור קטגוריות
-  const [mergeModalData, setMergeModalData] = useState(null); // חלונית כפילויות
+  const [categoryModalData, setCategoryModalData] = useState(null);
+  const [mergeModalData, setMergeModalData] = useState(null);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importUrl, setImportUrl] = useState("");
-  // --- מצבים עבור המתכנן החכם המשודרג ---
   const [isPlannerModalOpen, setIsPlannerModalOpen] = useState(false);
   const [plannerStep, setPlannerStep] = useState(1);
   const [aiRecommendations, setAiRecommendations] = useState(null);
@@ -395,7 +380,6 @@ function App() {
     isLoading: false,
   });
 
-  // --- מנוע התראות Push מקומיות ---
   const triggerPushNotification = async (title, body) => {
     if (!("Notification" in window)) return;
     if (Notification.permission === "granted") {
@@ -406,7 +390,7 @@ function App() {
           icon: "/icon-192x192.png",
           badge: "/icon-192x192.png",
           vibrate: [200, 100, 200],
-          tag: "shopping-reminder", // מונע כפילויות של התראות זהות
+          tag: "shopping-reminder",
           renotify: true,
         });
       } catch (err) {
@@ -415,7 +399,6 @@ function App() {
     }
   };
 
-  // בדיקה והתראה על מצרכים שעלולים להיגמר (לפי חיזוי)
   const checkPredictionReminders = (loadedItems) => {
     const now = Date.now();
     const todayKey = new Date().toDateString();
@@ -448,7 +431,6 @@ function App() {
         const daysSinceLastPurchase =
           msSinceLastPurchase / (1000 * 60 * 60 * 24);
 
-        // אם עבר זמן החידוש הצפוי והמוצר במלאי, ולא הודענו עליו היום
         if (
           daysSinceLastPurchase >= avgDiffDays &&
           !notifiedToday.includes(item.id)
@@ -474,17 +456,14 @@ function App() {
     }
   };
 
-  // תזכורת יום חמישי בצהריים לקראת שבת
   const checkShabbatReminder = (loadedItems) => {
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 4 = יום חמישי
+    const dayOfWeek = today.getDay();
     const hour = today.getHours();
     const lastShabbatNotify = localStorage.getItem("last_shabbat_notify");
 
-    // יצירת מפתח ייחודי לשבוע הנוכחי
     const currentWeekKey = `${today.getFullYear()}-W${Math.ceil(today.getDate() / 7)}`;
 
-    // אם יום חמישי, בין 12:00 ל-18:00, ולא נשלחה התראה השבוע
     if (
       dayOfWeek === 4 &&
       hour >= 12 &&
@@ -505,7 +484,6 @@ function App() {
   };
 
   const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false);
-  // פונקציית עזר להדלקה/כיבוי של כפתורי הבחירה (Chips)
   const togglePlannerChip = (category, value) => {
     setPlannerAnswers((prev) => {
       const currentList = prev[category];
@@ -529,10 +507,8 @@ function App() {
         result.categorizedItems &&
         result.categorizedItems.length > 0
       ) {
-        // מציגים למשתמש את הצעת הסידור לאישור לפני הביצוע
         setCategoryModalData(result.categorizedItems);
       } else {
-        // Fallback אופליין: נפעיל את הלוגיקה הישנה שמסדרת אוטומטית לפי מילים (guessCategory)
         fixAllCategoriesOffline();
       }
     } catch (e) {
@@ -570,7 +546,6 @@ function App() {
     if (!categoryModalData) return;
     let count = 0;
 
-    // בונים מפה מהירה של השמות והקטגוריות החדשות
     const catMap = {};
     categoryModalData.forEach((c) => {
       catMap[c.name] = c.category;
@@ -618,7 +593,6 @@ function App() {
       );
       if (itemsToMerge.length < 2) continue;
 
-      // חישוב כמות כוללת למוצר הממוזג
       const totalTarget = itemsToMerge.reduce(
         (sum, item) => sum + (item.target || 1),
         0,
@@ -628,7 +602,6 @@ function App() {
         0,
       );
 
-      // נבחר מוצר אחד שיישאר (למשל הראשון) ואותו נעדכן
       const primaryItem = itemsToMerge[0];
       const primaryRef = doc(db, "groceries", primaryItem.id);
 
@@ -638,7 +611,6 @@ function App() {
         current: totalCurrent,
       });
 
-      // נמחק את שאר הכפילויות
       for (let i = 1; i < itemsToMerge.length; i++) {
         const duplicateRef = doc(db, "groceries", itemsToMerge[i].id);
         batch.delete(duplicateRef);
@@ -669,7 +641,6 @@ function App() {
       );
   }, []);
 
-  // תיקון memory leak: רשום את ה-listener פעם אחת בלבד (בביצוע הקוד הייתה מתוסף מחדש בכל סריקת קבלה)
   useEffect(() => {
     const handleChunkError = (e) => {
       if (
@@ -684,19 +655,7 @@ function App() {
     return () => window.removeEventListener("error", handleChunkError);
   }, []);
 
-  // // שים כאן את רשימת המיילים המדויקת של 5 החברים שלך (באותיות קטנות)
   // const ALLOWED_EMAILS = [
-  //   "ori.shar10@gmail.com", // אורי
-  //   "hnweinberg@gmail.com", // נועם
-  //   "veredsha12@gmail.com", // אמא
-  //   "avners2014@gmail.com", // אבא
-  //   "arielleserwatien@gmail.com", // אריאל
-  //   "rwysrby970@gmail.com", // רועי
-  //   "reutozer050@gmail.com", // רעות
-  //   "itay20711@gmail.com", // איתי
-  //   "Idosha2002@gmail.com", // עידו
-  //   "Stav.noyb@gmail.com", // סתיו
-  //   "naamash1212@gmail.com", // נעמה
   //   "orishar1000@gmail.com",
   // ];
 
@@ -771,7 +730,7 @@ function App() {
   useEffect(() => {
     if (!user || !sharedListId) return;
 
-    let isFirstLoad = true; // משתנה שימנע התראות ספאם על ההתחלה של כל המוצרים הקיימים
+    let isFirstLoad = true;
 
     const qGroceries = query(
       collection(db, "groceries"),
@@ -780,12 +739,10 @@ function App() {
     const unsubGroceries = onSnapshot(qGroceries, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      // מיון ראשוני של המוצרים
       const sortedData = data.sort(
         (a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis() || 0,
       );
 
-      // מאזין לשינויים בזמן אמת (רק אחרי טעינה ראשונית של הדף)
       if (!isFirstLoad) {
         snap.docChanges().forEach((change) => {
           if (change.type === "added") {
@@ -796,7 +753,6 @@ function App() {
               "";
             const addedBy = itemData.addedBy || "";
 
-            // התראה כשמישהו אחר מהמשפחה מוסיף מוצר לרשימה!
             if (addedBy && addedBy !== currentUserName) {
               triggerPushNotification(
                 "🛒 מוצר חדש התווסף!",
@@ -806,7 +762,6 @@ function App() {
           }
         });
       } else {
-        // בדיקות תקופתיות בריצה ראשונה של האפליקציה (שלוש שניות אחרי הטעינה כדי לא להעמיס)
         setTimeout(() => {
           checkPredictionReminders(sortedData);
           checkShabbatReminder(sortedData);
@@ -909,7 +864,7 @@ function App() {
       { listId: joinCodeInput.trim() },
       { merge: true },
     );
-    showToast("הצטרפת בהצלחה לרשימה המשותפת!", "success"); // ירוק
+    showToast("הצטרפת בהצלחה לרשימה המשותפת!", "success");
 
     setJoinCodeInput("");
   };
@@ -919,7 +874,6 @@ function App() {
   useEffect(() => {
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isApple = /iphone|ipad|ipod/.test(userAgent);
-    // בודק אם האפליקציה כבר מותקנת כ-PWA
     const isStandalone = window.matchMedia(
       "(display-mode: standalone)",
     ).matches;
@@ -952,17 +906,15 @@ function App() {
 
     if (isConfirmed) {
       try {
-        // 1. מחיקת מסמך המשתמש מחנות Firestore
         await deleteDoc(doc(db, "users", user.uid));
-        // 2. מחיקת המשתמש עצמו ממערכת ה-Authentication
         await deleteUser(auth.currentUser);
-        showToast("החשבון והנתונים נמחקו לצמיתות מהמערכת.", "success"); // ירוק
+        showToast("החשבון והנתונים נמחקו לצמיתות מהמערכת.", "success");
       } catch (error) {
         console.error(error);
         showToast(
           "מטעמי אבטחה, כדי למחוק חשבון עליך להתנתק, להתחבר מחדש, וללחוץ על המחיקה מיד.",
           "error",
-        ); // אדום
+        );
       }
     }
   };
@@ -981,8 +933,8 @@ function App() {
         showToast(
           `מעולה. המוצר יתווסף לרשימה בכל יום ${DAYS_HEB[d]}.`,
           "success",
-        ); // ירוק
-      } else showToast("נא להזין מספר בין 0 ל-6.", "error"); // אדום
+        );
+      } else showToast("נא להזין מספר בין 0 ל-6.", "error");
     }
   };
 
@@ -1007,7 +959,6 @@ function App() {
     }
   }, [isScannerOpen]);
 
-  // --- חיבור מספר טלפון מוואטסאפ לחשבון ---
   useEffect(() => {
     if (!user || !sharedListId) return;
 
@@ -1017,7 +968,6 @@ function App() {
     if (phoneToLink) {
       const linkPhone = async () => {
         try {
-          // שומרים בטבלה נפרדת את החיבור בין הטלפון לרשימה
           await setDoc(doc(db, "phones", phoneToLink), {
             listId: sharedListId,
             linkedAt: new Date(),
@@ -1025,7 +975,7 @@ function App() {
           showToast(
             "🎉 וואטסאפ חובר בהצלחה! מעכשיו אפשר להוסיף מוצרים בהודעה.",
             "success",
-          ); // ירוק
+          );
           window.history.replaceState(null, "", window.location.pathname);
         } catch (e) {
           console.error("Link error:", e);
@@ -1042,7 +992,7 @@ function App() {
       const data = docSnap.data();
       setNewItemName(data.name);
       setNewItemCategory(data.category);
-      showToast(`זוהה: ${data.name}! לחץ פלוס כדי להוסיף.`, "success"); // ירוק
+      showToast(`זוהה: ${data.name}! לחץ פלוס כדי להוסיף.`, "success");
     } else {
       const newName = await showPrompt(
         `ברקוד חדש זוהה (${barcode}). מה שם המוצר?`,
@@ -1087,7 +1037,6 @@ function App() {
       const transcript = event.results[0][0].transcript;
       const cleanTranscript = transcript.replace(/\.$/, "");
 
-      // מחליף את "ו" (כמו "ולחם") ואת המילה "פסיק" כדי לזהות רשימה
       const items = cleanTranscript
         .replace(/ ו/g, ",")
         .split(",")
@@ -1120,20 +1069,18 @@ function App() {
     [stores],
   );
 
-  // 1. חישוב תדירות השימוש האישית של המשתמש בכל מוצר מההיסטוריה
   const productFrequencies = useMemo(() => {
     const counts = {};
     items.forEach((item) => {
       const name = item.name.trim();
       counts[name] = (counts[name] || 0) + 1;
       if (item.priceHistory) {
-        counts[name] += item.priceHistory.length; // בוסט נוסף אם תועד לו מחיר בעבר
+        counts[name] += item.priceHistory.length;
       }
     });
     return counts;
   }, [items]);
 
-  // 2. סינון ודירוג חכם של הצעות ה-Autocomplete
   const activeSuggestions = useMemo(() => {
     if (!newItemName.trim() || !showSuggestions) return [];
     const search = newItemName.trim();
@@ -1143,23 +1090,22 @@ function App() {
         const score = calculateFuzzyScore(search, c.name);
         const frequency = productFrequencies[c.name] || 0;
 
-        // שקלול סופי: ציון ה-Fuzzy + תוספת של 15 נקודות לכל שימוש היסטורי
         const finalScore = score > 0 ? score + frequency * 15 : 0;
 
         return { ...c, matchScore: finalScore };
       })
       .filter((c) => c.matchScore > 0 && c.name !== search)
-      .sort((a, b) => b.matchScore - a.matchScore) // מיון מההתאמה הטובה ביותר לפחות טובה
-      .slice(0, 10); // החזרת 10 התוצאות הרלוונטיות ביותר
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 10);
   }, [newItemName, catalog, showSuggestions, productFrequencies]);
 
   const toggleCat = (catId) => {
     setCollapsedCats((prev) => {
       const isCurrentlyOpen = prev[catId];
       if (isCurrentlyOpen) {
-        return {}; // אם היא פתוחה, לחיצה תסגור אותה (והכל יהיה סגור)
+        return {};
       } else {
-        return { [catId]: true }; // פותח רק את הנוכחית וסוגר את השאר
+        return { [catId]: true };
       }
     });
   };
@@ -1193,20 +1139,18 @@ function App() {
     if (!newItemName.trim()) return;
 
     const cleanName = newItemName.trim();
-    // שליפת ברירת מחדל חכמה במידה והמשתמש לא הגדיר קטגוריה/יחידת מידה ידנית
     const defaults = getSmartDefaults(cleanName);
     const finalCat = newItemCategory.trim() || defaults.category;
     const finalUnit = newItemUnit || defaults.unit;
 
     try {
-      // 1. שמירת הפריט החדש עם שדה ה-unit ב-groceries
       await addDoc(collection(db, "groceries"), {
         name: cleanName,
         category: finalCat,
         store: activeStore,
         current: 0,
         target: newItemTarget,
-        unit: finalUnit, // <--- השדה החדש!
+        unit: finalUnit,
         note: "",
         isBought: false,
         createdAt: new Date(),
@@ -1216,7 +1160,6 @@ function App() {
         addedBy: user?.displayName || user?.email?.split("@")[0] || "אנונימי",
       });
 
-      // 2. עדכון הקטלוג הכללי
       const catalogDocRef = doc(db, "product_catalog", cleanName);
       const catalogSnapshot = await getDoc(catalogDocRef);
 
@@ -1242,7 +1185,6 @@ function App() {
         });
       }
 
-      // 3. איפוס הטופס וחזרה לברירת המחדל
       setNewItemName("");
       setNewItemCategory("");
       setNewItemTarget(1);
@@ -1267,7 +1209,6 @@ function App() {
     const priceStr = await showPrompt(`כמה עלה "${item.name}"? (הזן מספר)`);
     if (!priceStr || isNaN(priceStr)) return;
 
-    // בואו ניתן למשתמש לבחור מתוך הרשימה המוגדרת מראש
     let storesListStr = ISRAELI_SUPERMARKETS.map(
       (s, i) => `${i + 1}. ${s}`,
     ).join("\n");
@@ -1275,7 +1216,7 @@ function App() {
       `באיזו רשת קנית? בחר מספר:\n${storesListStr}`,
     );
 
-    let specificStore = activeStore; // ברירת המחדל
+    let specificStore = activeStore;
     if (storeIndexStr) {
       const idx = parseInt(storeIndexStr) - 1;
       if (idx >= 0 && idx < ISRAELI_SUPERMARKETS.length) {
@@ -1286,22 +1227,18 @@ function App() {
     }
 
     const priceNum = parseFloat(priceStr);
-    // --- התחלת קוד התראת מבצע ---
     if (item.priceHistory && item.priceHistory.length > 0) {
-      // מחשבים את ממוצע המחירים ההיסטורי של המוצר הזה
       const pastPrices = item.priceHistory.map((h) => h.price);
       const avgPastPrice =
         pastPrices.reduce((a, b) => a + b, 0) / pastPrices.length;
 
-      // אם המחיר החדש קטן או שווה ל-70% מהמחיר הממוצע (כלומר, ירידה של 30% או יותר)
       if (priceNum <= avgPastPrice * 0.7) {
         showToast(
           `🎉 איזה יופי! המחיר של "${item.name}" שכרגע הזנת (₪${priceNum}) נמוך ביותר מ-30% מהמחיר הרגיל שבו קנית אותו בעבר (ממוצע ₪${avgPastPrice.toFixed(2)}). אחלה דיל!`,
           "success",
-        ); // ירוק
+        );
       }
     }
-    // --- סוף קוד התראת מבצע ---
     const dateStr = new Date().toLocaleDateString("he-IL");
     const timestamp = Date.now();
 
@@ -1312,7 +1249,6 @@ function App() {
       timestamp,
     };
 
-    // --- 1. עדכון ברשימה הפרטית של המשתמש ---
     const updatedHistory = [newEntry, ...(item.priceHistory || [])].slice(
       0,
       10,
@@ -1321,7 +1257,6 @@ function App() {
       priceHistory: updatedHistory,
     });
 
-    // --- 2. עדכון במאגר הגלובלי (חוכמת ההמונים) ---
     try {
       const normalizedName = item.name.toLowerCase().trim();
       const globalDocRef = doc(db, "global_prices", normalizedName);
@@ -1332,37 +1267,34 @@ function App() {
         currentGlobalData = globalDocSnap.data();
       }
 
-      // שולפים את היסטוריית המחירים עבור הרשת הספציפית הזו
       let storeHistory = currentGlobalData[specificStore] || [];
 
-      // מוסיפים את המחיר החדש להתחלה, ושומרים רק את 3 האחרונים
       storeHistory = [
         { price: priceNum, date: dateStr, timestamp },
         ...storeHistory,
       ].slice(0, 3);
 
-      // מעדכנים את המסמך הגלובלי
       await setDoc(
         globalDocRef,
         {
           [specificStore]: storeHistory,
-          lastUpdated: timestamp, // תאריך העדכון האחרון של כל מוצר
+          lastUpdated: timestamp,
         },
         { merge: true },
-      ); // merge: true שומר על נתונים של רשתות אחרות באותו מסמך
+      );
 
       try {
         const catalogDocRef = doc(db, "product_catalog", item.name.trim());
         await setDoc(
           catalogDocRef,
           { hasPrice: true },
-          { merge: true }, // merge אומר: אל תדרוס נתונים אחרים כמו ברקוד, רק תוסיף/תעדכן את hasPrice
+          { merge: true },
         );
       } catch (catalogErr) {
         console.error("שגיאה בעדכון חיווי המחיר בקטלוג:", catalogErr);
       }
 
-      showToast("המחיר תועד בהצלחה! 📈 תרמת למאגר המחירים הקהילתי.", "success"); // ירוק
+      showToast("המחיר תועד בהצלחה! 📈 תרמת למאגר המחירים הקהילתי.", "success");
     } catch (e) {
       console.error("Error updating global prices:", e);
     }
@@ -1448,7 +1380,7 @@ function App() {
         });
       }
     }
-    showToast("המצרכים החסרים נוספו לרשימה בהצלחה!", "success"); // ירוק
+    showToast("המצרכים החסרים נוספו לרשימה בהצלחה!", "success");
     setCurrentView("shopping");
   };
 
@@ -1488,7 +1420,7 @@ function App() {
         });
       }
     }
-    showToast("המוצרים נוספו לרשימה!", "success"); // ירוק
+    showToast("המוצרים נוספו לרשימה!", "success");
     setCurrentView("shopping");
   };
 
@@ -1618,26 +1550,23 @@ function App() {
   };
 
   useEffect(() => {
-    // קריטי: מושכים נתונים רק אחרי שפיירבייס אישר שהמשתמש מחובר!
     if (!user) return;
     const fetchCatalog = async () => {
       try {
         const snapshot = await getDocs(collection(db, "product_catalog"));
         const catalogData = snapshot.docs.map((doc) => {
           const rawName = doc.id;
-          const cleanedName = cleanProductName(rawName); // מעבירים במכונת הכביסה
+          const cleanedName = cleanProductName(rawName);
 
           return {
-            name: cleanedName, // השם היפה שיוצג למשתמש
-            originalId: rawName, // למקרה שנצטרך לעדכן אותו בפיירבייס בעתיד
+            name: cleanedName,
+            originalId: rawName,
             barcode: doc.data().barcode,
-            // משתמשים בפונקציה מהשלב הקודם כדי שכל המוצרים יכנסו לקטגוריות גדולות והגיוניות!
             category: guessCategory(cleanedName),
-            hasPrice: doc.data().hasPrice || false, // <--- השורה החדשה שחסרה!
+            hasPrice: doc.data().hasPrice || false,
           };
         });
 
-        // ממיינים אלפביתית שיהיה קל למצוא
         catalogData.sort((a, b) => a.name.localeCompare(b.name));
         setCatalog(catalogData);
       } catch (error) {
@@ -1646,7 +1575,7 @@ function App() {
     };
 
     fetchCatalog();
-  }, [user]); // <--- כאן השינוי (הוספנו את user)
+  }, [user]);
 
   const deleteStore = async (storeId) => {
     await deleteDoc(doc(db, "stores", storeId));
@@ -1681,7 +1610,6 @@ function App() {
     let fixedCount = 0;
     for (const item of items) {
       const correctCat = guessCategory(item.name);
-      // אם הקטגוריה הנוכחית שגויה, נעדכן אותה
       if (item.category !== correctCat) {
         await updateDoc(doc(db, "groceries", item.id), {
           category: correctCat,
@@ -1813,14 +1741,12 @@ function App() {
     );
   };
 
-  // ✅ פונקציה חדשה: ייצוא רשימת הקניות כהודעת WhatsApp מעוצבת
   const shareListToWhatsApp = () => {
     if (shoppingList.length === 0) {
       showToast("הרשימה ריקה - אין מה לשתף! 🛒", "error");
       return;
     }
 
-    // קיבוץ המוצרים לפי קטגוריות
     const grouped = shoppingList.reduce((acc, item) => {
       const cat = item.category || "כללי";
       if (!acc[cat]) acc[cat] = [];
@@ -1838,7 +1764,6 @@ function App() {
     message += `📅 ${today}\n`;
     message += `━━━━━━━━━━━━━━━━\n\n`;
 
-    // אמוג'י לכל קטגוריה
     const catEmoji = {
       "מוצרי חלב וביצים": "🥛",
       "מאפייה ולחמים": "🥖",
@@ -1851,7 +1776,6 @@ function App() {
       כללי: "🛒",
     };
 
-    // מיון הקטגוריות לפי סדר displayOrder אם קיים
     const sortedCategories = Object.keys(grouped).sort((a, b) => {
       const idxA = displayOrder.indexOf(a);
       const idxB = displayOrder.indexOf(b);
@@ -1876,7 +1800,6 @@ function App() {
       message += "\n";
     });
 
-    // סיכום מחיר
     if (shopTotal > 0) {
       message += `━━━━━━━━━━━━━━━━\n`;
       message += `💰 *צפי עלות: ₪${shopTotal.toFixed(2)}*\n`;
@@ -1927,7 +1850,7 @@ function App() {
 
   const hasOpenCats = activeCatIds.some((id) => collapsedCats[id]);
   const closeAllCategories = () => {
-    setCollapsedCats({}); // סוגר את כל הקטגוריות בבת אחת
+    setCollapsedCats({});
   };
 
   const [ultimateCartData, setUltimateCartData] = useState(null);
@@ -1982,10 +1905,8 @@ function App() {
       const storesToEvaluate = Array.from(activeStoresSet);
       if (storesToEvaluate.length === 0) storesToEvaluate.push("סופרמרקט");
 
-      // --- הגדרת הקנס המציאותי ---
-      const TRAVEL_PENALTY = 20; // 20 שקלים "קנס" על כל חנות נוספת שעוצרים בה
+      const TRAVEL_PENALTY = 20;
 
-      // 1. עצלנים (מקום אחד - ללא קנס)
       const oneStopOptions = storesToEvaluate
         .map((store) => {
           let total = 0;
@@ -1999,7 +1920,6 @@ function App() {
         .sort((a, b) => a.total - b.total);
       const bestOneStop = oneStopOptions[0];
 
-      // 2. אקסטרים חיסכון (עם קנס על כל חנות החל מהשנייה)
       let extremeRawTotal = 0;
       const extremeGroups = {};
       fetchedItems.forEach((fi) => {
@@ -2025,9 +1945,8 @@ function App() {
       const extremeStoreCount = Object.keys(extremeGroups).length;
       const extremePenalty =
         extremeStoreCount > 1 ? (extremeStoreCount - 1) * TRAVEL_PENALTY : 0;
-      const extremeNetTotal = extremeRawTotal + extremePenalty; // הסכום כולל הוצאות הדלק/זמן
+      const extremeNetTotal = extremeRawTotal + extremePenalty;
 
-      // 3. שביל הזהב (2 חנויות בדיוק -> קנס אחד)
       let bestTwoStop = null;
       let bestTwoStopNetTotal = Infinity;
 
@@ -2051,7 +1970,7 @@ function App() {
             }
           });
 
-          const currentNetTotal = currentRawTotal + TRAVEL_PENALTY; // הוספת הקנס
+          const currentNetTotal = currentRawTotal + TRAVEL_PENALTY;
 
           if (
             currentNetTotal < bestTwoStopNetTotal &&
@@ -2061,8 +1980,8 @@ function App() {
             bestTwoStopNetTotal = currentNetTotal;
             bestTwoStop = {
               stores: [storeA, storeB],
-              rawTotal: currentRawTotal, // עלות המצרכים בלבד
-              netTotal: currentNetTotal, // עלות כולל קנס זמן נסיעה
+              rawTotal: currentRawTotal,
+              netTotal: currentNetTotal,
               groups: {
                 [storeA]: { items: itemsA },
                 [storeB]: { items: itemsB },
@@ -2072,7 +1991,6 @@ function App() {
         }
       }
 
-      // מחליטים מה כדאי להציג: מציגים פיצולים רק אם הם זולים יותר מקנייה במקום אחד *אחרי* הקנס
       const isTwoStopWorthIt =
         bestTwoStop && bestTwoStop.netTotal < bestOneStop.total;
       const isExtremeWorthIt =
@@ -2107,13 +2025,11 @@ function App() {
     const suggestions = [];
 
     items.forEach((item) => {
-      // אנחנו מנבאים רק למוצרים שיש להם היסטוריה של לפחות 2 קניות
       if (item.priceHistory && item.priceHistory.length >= 2) {
-        // חישוב המרווח הממוצע בימים בין הקניות
         const timestamps = item.priceHistory
           .map((h) => h.timestamp)
           .filter((t) => t !== undefined)
-          .sort((a, b) => b - a); // מהחדש לישן
+          .sort((a, b) => b - a);
 
         if (timestamps.length < 2) return;
 
@@ -2129,7 +2045,6 @@ function App() {
         const daysSinceLastPurchase =
           msSinceLastPurchase / (1000 * 60 * 60 * 24);
 
-        // אם עבר יותר מ-80% מהזמן הממוצע, והמוצר לא כרגע ברשימת הקניות
         if (
           daysSinceLastPurchase >= avgDiffDays * 0.8 &&
           item.current >= item.target
@@ -2164,7 +2079,6 @@ function App() {
     setRescueRecipe(null);
 
     try {
-      // מחפשים במזווה מוצרים שהתוקף שלהם פג או עומד לפוג (4 ימים או פחות)
       const expiringItems = inStock
         .filter((item) => {
           if (!item.expirationDate) return false;
@@ -2187,7 +2101,6 @@ function App() {
         return;
       }
 
-      // קריאה לשירות ה-AI המגובה
       const result = await getRescueRecipe(expiringItems);
       setRescueRecipe(result);
     } catch (e) {
@@ -2225,7 +2138,6 @@ function App() {
     const cleanName = rec.name.trim();
 
     try {
-      // 1. הוספה רגילה לעגלה מההמלצה
       await addDoc(collection(db, "groceries"), {
         name: cleanName,
         category: rec.category || "כללי",
@@ -2238,20 +2150,17 @@ function App() {
         listId: sharedListId,
       });
 
-      // 2. עדכון הקטלוג הכללי עבור הרובוט השואב
       const safeId = cleanName.replace(/\//g, "-");
       const catalogDocRef = doc(db, "product_catalog", safeId);
       const catalogSnapshot = await getDoc(catalogDocRef);
 
       if (!catalogSnapshot.exists()) {
-        // חיפוש חכם בקטלוג הקיים למוצר שמכיל את השם שהוקלד (או שהשם שהוקלד מכיל אותו)
         const matchedCatalogItem = catalog.find(
           (c) =>
             c.name.toLowerCase().includes(cleanName.toLowerCase()) ||
             cleanName.toLowerCase().includes(c.name.toLowerCase()),
         );
 
-        // אם מצאנו מוצר דומה, ניקח את הברקוד שלו. אחרת, יישאר ריק
         const matchedBarcode = matchedCatalogItem
           ? matchedCatalogItem.barcode
           : "";
@@ -2259,10 +2168,9 @@ function App() {
         await setDoc(catalogDocRef, {
           barcode: matchedBarcode.toString(),
           addedAt: new Date(),
-          priorityUpdate: true, // 🌟 מסמן לרובוט לעדכן את זה בסבב הבא בהקדם!
+          priorityUpdate: true,
         });
       } else {
-        // אם המוצר כבר קיים בקטלוג, נסמן אותו לעדכון דחוף בשרת
         await updateDoc(catalogDocRef, {
           priorityUpdate: true,
         });
@@ -2275,7 +2183,6 @@ function App() {
   const generateSmartGroceryList = async (answers) => {
     setIsAiLoading(true);
     try {
-      // קריאה לשירות ה-AI המגובה
       const result = await getSmartGroceryList(answers);
       setAiRecommendations(result);
       setPlannerStep(2);
@@ -2295,32 +2202,28 @@ function App() {
     if (!file) return;
 
     setIsScanningReceipt(true);
-    setIsReceiptLoading(true); // מפעיל את מסך ההמתנה של ה-AI
+    setIsReceiptLoading(true);
     try {
-      // ממירים את התמונה לפורמט שה-AI מבין (Base64)
       const reader = new FileReader();
       reader.readAsDataURL(file);
 
       reader.onloadend = async () => {
         const base64data = reader.result.split(",")[1];
 
-        // קריאה לשירות פענוח קבלות המגובה
         const receiptData = await getReceiptScan(base64data, file.type);
         const storeName = "סופרמרקט";
         let addedCount = 0;
         let updatedCount = 0;
         let totalSavings = 0;
 
-        // עוברים על כל המוצרים שה-AI מצא בקבלה
         for (const receiptItem of receiptData.items) {
           const timestamp = Date.now();
           const dateStr = new Date().toLocaleDateString("he-IL");
 
           const itemPriceTotal = parseFloat(receiptItem.price) || 0;
           const itemQty = parseInt(receiptItem.qty) || 1;
-          const unitPrice = itemPriceTotal / itemQty; // מחיר ליחידה אחת
+          const unitPrice = itemPriceTotal / itemQty;
 
-          // נחפש מוצר קיים עם שם דומה או זהה (בהתעלם מרווחים ואותיות גדולות/קטנות)
           const cleanReceiptName = receiptItem.name.trim().toLowerCase();
           const existingItem = items.find((existing) => {
             const existingName = existing.name.trim().toLowerCase();
@@ -2331,7 +2234,6 @@ function App() {
             );
           });
 
-          // חישוב מחיר היסטורי ממוצע לבדיקת מבצעים
           let usualPrice = null;
           if (
             existingItem &&
@@ -2343,7 +2245,6 @@ function App() {
               pastPrices.reduce((a, b) => a + b, 0) / pastPrices.length;
           }
 
-          // אם המחיר הנוכחי זול מהמחיר הרגיל - נחשב את החיסכון!
           if (usualPrice && unitPrice < usualPrice) {
             const savingsPerUnit = usualPrice - unitPrice;
             totalSavings += savingsPerUnit * itemQty;
@@ -2357,7 +2258,6 @@ function App() {
           };
 
           if (existingItem) {
-            // 2א. עדכון מוצר קיים ברשימה - סימון כנקנה והוספת המחיר להיסטוריה
             const updatedHistory = [
               priceEntry,
               ...(existingItem.priceHistory || []),
@@ -2368,23 +2268,22 @@ function App() {
                 existingItem.target,
                 existingItem.current + itemQty,
               ),
-              isBought: false, // false כדי שייכנס ישירות למזווה
+              isBought: false,
               boughtBy:
                 user?.displayName || user?.email?.split("@")[0] || "אנונימי",
               priceHistory: updatedHistory,
-              store: storeName, // מעדכן לחנות ממנה נקנה
+              store: storeName,
               note: "עודכן מקבלה 📸",
             });
             updatedCount++;
           } else {
-            // 2ב. הוספת מוצר חדש למזווה (במידה ולא היה ברשימה המקורית)
             await addDoc(collection(db, "groceries"), {
               name: receiptItem.name,
               category: receiptItem.category || "כללי",
               store: storeName,
-              current: itemQty, // מעדכן מלאי נוכחי
+              current: itemQty,
               target: 0,
-              isBought: false, // false כדי שייכנס ישירות למזווה
+              isBought: false,
               priceHistory: [priceEntry],
               createdAt: new Date(),
               listId: sharedListId || user.uid,
@@ -2395,7 +2294,6 @@ function App() {
             addedCount++;
           }
 
-          // 3. עדכון מאגר המחירים הגלובלי (חוכמת ההמונים)
           try {
             const normalizedName = receiptItem.name.toLowerCase().trim();
             const globalDocRef = doc(db, "global_prices", normalizedName);
@@ -2421,7 +2319,6 @@ function App() {
               { merge: true },
             );
 
-            // סימון בקטלוג המרכזי שיש למוצר מחיר
             const catalogDocRef = doc(
               db,
               "product_catalog",
@@ -2433,7 +2330,6 @@ function App() {
           }
         }
 
-        // הצגת סיכום הסריקה
         let summaryMessage = `✅ קבלה נסרקה מ-${storeName}! `;
         if (updatedCount > 0)
           summaryMessage += `סימנו ${updatedCount} מוצרים כנקנו. `;
@@ -2442,7 +2338,6 @@ function App() {
 
         showToast(summaryMessage, "success");
 
-        // 4. במידה וזוהו מבצעים וחיסכון - מקפיצים הודעה ייעודית!
         if (totalSavings > 0) {
           setTimeout(() => {
             showToast(
@@ -2452,7 +2347,7 @@ function App() {
           }, 1500);
         }
 
-        setActiveStore(storeName); // מעביר אוטומטית לטאב של החנות שנסרקה!
+        setActiveStore(storeName);
         setIsScanningReceipt(false);
         setIsReceiptLoading(false);
       };
@@ -2506,7 +2401,10 @@ function App() {
   if (!user) {
     const handleLoginClick = async () => {
       try {
-        // מנסים התחברות עם חלון קופץ באופן ישיר
+        googleProvider.setCustomParameters({
+          prompt: "select_account",
+        });
+
         await signInWithPopup(auth, googleProvider);
       } catch (error) {
         console.error("שגיאה בהתחברות:", error);
@@ -2520,18 +2418,15 @@ function App() {
           error.code === "auth/popup-closed-by-user" ||
           error.code === "auth/cancelled-popup-request"
         ) {
-          // המשתמש סגר את החלון - לא צריך להציג שגיאה
           return;
         } else {
           showToast("שגיאה בהתחברות. נסה שוב.", "error");
         }
       }
     };
-
     return <LandingPage onLoginClick={handleLoginClick} />;
   }
 
-  // חישוב התקדמות קניות מותאם לחנות הפעילה בלבד ולמוצרים שברשימת הקניות
   const activeInCartCount = items.filter(
     (i) =>
       (i.store === activeStore || (!i.store && activeStore === "סופרמרקט")) &&
@@ -2550,27 +2445,8 @@ function App() {
       : 0;
   return (
     <div className="app-container">
-      {/* {/* הכפתור בראש העמוד כדי שלא יתחבא מאחורי שום תנאי */}
-      {/* <button
-        onClick={seedCatalogDatabase}
-        style={{
-          background: "#e74c3c",
-          color: "white",
-          padding: "15px",
-          border: "none",
-          borderRadius: "8px",
-          cursor: "pointer",
-          fontWeight: "bold",
-          fontSize: "16px",
-          width: "100%",
-          marginBottom: "20px",
-          zIndex: 9999, // מבטיח שהוא יהיה מעל אלמנטים אחרים
-        }}
-      >
-        ⚙️ (מנהל) לחץ כאן לטעינת 1,000 מוצרים ל-Firebase
-      </button> */}
+
       <AppGuide />
-      {/* --- ההודעה למשתמשי אייפון --- */}
       {isIOS && (
         <div
           style={{
@@ -2733,7 +2609,6 @@ function App() {
                   gap: "20px",
                 }}
               >
-                {/* 1. מי אוכל? */}
                 <div className="wizard-section">
                   <h4 style={{ margin: "0 0 10px" }}>
                     👥 עבור מי אנחנו קונים?
@@ -2813,7 +2688,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* 2. תזונה והעדפות */}
                 <div className="wizard-section">
                   <h4 style={{ margin: "0 0 10px" }}>🥗 סגנון תזונה</h4>
                   <div
@@ -2838,7 +2712,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* 3. סגנון ארוחות */}
                 <div className="wizard-section">
                   <h4 style={{ margin: "0 0 10px" }}>👨‍🍳 איזה אוכל בא לכם?</h4>
                   <div
@@ -2864,7 +2737,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* 4. סוגי ארוחות */}
                 <div className="wizard-section">
                   <h4 style={{ margin: "0 0 10px" }}>🍽️ למה צריך לדאוג?</h4>
                   <div
@@ -3163,7 +3035,6 @@ function App() {
               >
                 {Object.entries(globalPriceModal.data)
                   .sort((a, b) => {
-                    // מיון רשתות מהזולה ליקרה (לפי המחיר האחרון המעודכן בכל רשת)
                     const priceA = a[1][0]?.price || 0;
                     const priceB = b[1][0]?.price || 0;
                     return priceA - priceB;
@@ -3298,7 +3169,6 @@ function App() {
       )}
       {currentView === "home" && (
         <section className="dashboard">
-          {/* ברכת שלום */}
           <div className="greeting-card">
             <div>
               <h1 className="greeting-title">
@@ -3324,7 +3194,6 @@ function App() {
               referrerPolicy="no-referrer"
             />
           </div>
-          {/* כרטיס התקדמות קניות */}
           <div
             role="button"
             tabIndex={0}
@@ -3358,7 +3227,6 @@ function App() {
             </span>
           </div>
 
-          {/* קיצורים חכמים */}
           <h3 className="section-title">⚡ קיצורים</h3>
           <div className="quick-actions-grid">
             <div
@@ -3415,7 +3283,6 @@ function App() {
             </div>
           </div>
 
-          {/* בני בית מחוברים */}
           {activeUsers.length > 1 && (
             <div className="family-online-card">
               <div className="family-avatars">
@@ -3441,7 +3308,6 @@ function App() {
             </div>
           )}
 
-          {/* כפתור הגדרות */}
           <button
             className="quick-action"
             onClick={() => {
@@ -3553,7 +3419,6 @@ function App() {
           fastAddProduct={fastAddProduct}
         />
       )}
-      {/* חלון לוח המובילים (Gamification) */}
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
@@ -3640,7 +3505,7 @@ function App() {
                         if (isConfirmed) {
                           await deleteDoc(doc(db, "recipes", recipe.id));
                         }
-                      }} // <--- פה הוספנו סגירה נכונה של הפונקציה ושל ה-onClick
+                      }}
                       style={{
                         background: "none",
                         border: "none",
@@ -3787,25 +3652,18 @@ function App() {
         <PantryView items={items} user={user} sharedListId={sharedListId} />
       )}
       {currentView === "stats" && <StatsView stats={stats} items={items} />}
-      {/* חלון הפיצול החכם (העגלה האולטימטיבית) */}
       <SmartSplitModal
         isOpen={isSmartSplitOpen}
         onClose={() => setIsSmartSplitOpen(false)}
         ultimateCartData={ultimateCartData}
         isLoading={isUltimateCartLoading}
       />
-      {/* חלון השף להצלת מזון */}
       <FoodRescueModal
         rescueRecipe={rescueRecipe}
         isRescuing={isRescuing}
         onClose={() => setRescueRecipe(null)}
       />
-      {/* כפתור FAB צף
-      {currentView === "shopping" && (
-        <button className="fab-add" onClick={() => setIsSettingsOpen(false)}>
-          <i className="fas fa-plus"></i>
-        </button>
-      )} */}
+
       <nav className="bottom-nav">
         <div
           role="button"
@@ -3925,7 +3783,6 @@ function App() {
         <i className="fas fa-envelope"></i> הצעות לשיפור? כתבו לי במייל
       </button>
 
-      {/* --- באנר הסכמת קוקיז (Cookies) --- */}
       {showCookieBanner && (
         <div
           style={{
@@ -3970,7 +3827,6 @@ function App() {
           </button>
         </div>
       )}
-      {/* --- פוטר משפטי מעודכן עם פתיחת חלונות --- */}
       <div
         style={{
           textAlign: "center",
@@ -4030,7 +3886,6 @@ function App() {
           </span>
         </div>
       </div>
-      {/* --- חלון מודאל משפטי דינמי --- */}
       {activeLegalModal && (
         <div
           className="modal-overlay"
@@ -4151,7 +4006,6 @@ function App() {
         </div>
       )}
 
-      {/* --- מדריך קבלת פנים --- */}
       {showWelcomeGuide && (
         <WelcomeGuide onClose={() => setShowWelcomeGuide(false)} />
       )}

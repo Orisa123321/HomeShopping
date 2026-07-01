@@ -1,7 +1,6 @@
 import React from "react";
 
 const FoodRescueModal = ({ rescueRecipe, isRescuing, onClose }) => {
-  // אם אין מתכון ואנחנו לא באמצע חיפוש - לא מציגים כלום
   if (!rescueRecipe && !isRescuing) return null;
 
   return (
@@ -61,7 +60,6 @@ const FoodRescueModal = ({ rescueRecipe, isRescuing, onClose }) => {
               <strong>הצלחנו להציל:</strong>{" "}
               {rescueRecipe?.ingredients?.join(", ")}
             </div>
-            {/* הצגת המתכון עם ירידות שורה נכונות */}
             <div
               style={{
                 whiteSpace: "pre-wrap",

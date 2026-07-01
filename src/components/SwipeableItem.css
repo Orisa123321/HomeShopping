@@ -1,5 +1,5 @@
 .swipe-container {
-  touch-action: pan-y; /* מאפשר גלילה אנכית של הדף ללא הפרעה מהגרירה האופקית */
+  touch-action: pan-y;
   background: var(--bg-card, #ffffff);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }

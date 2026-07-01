@@ -67,7 +67,6 @@ const WelcomeGuide = ({ onClose }) => {
         <h2 style={{ margin: "0 0 15px 0", color: "var(--primary)" }}>
           {steps[currentStep].title}
         </h2>
-        {/* שימוש ב-whiteSpace כדי לכבד ירידות שורה (כמו בהוראות האייפון/אנדרואיד) */}
         <p
           style={{
             fontSize: "15px",
@@ -80,7 +79,6 @@ const WelcomeGuide = ({ onClose }) => {
           {steps[currentStep].desc}
         </p>
 
-        {/* נקודות התקדמות */}
         <div style={{ display: "flex", gap: "8px", margin: "20px 0" }}>
           {steps.map((_, index) => (
             <div
@@ -97,7 +95,6 @@ const WelcomeGuide = ({ onClose }) => {
           ))}
         </div>
 
-        {/* כפתורי ניווט */}
         <div
           style={{
             display: "flex",

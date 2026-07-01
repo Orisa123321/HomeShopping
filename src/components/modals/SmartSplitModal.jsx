@@ -45,7 +45,6 @@ const SmartSplitModal = ({ isOpen, onClose, ultimateCartData, isLoading }) => {
               gap: "20px",
             }}
           >
-            {/* אסטרטגיה 1: מקום אחד */}
             <div
               style={{
                 background: "var(--bg)",
@@ -88,7 +87,6 @@ const SmartSplitModal = ({ isOpen, onClose, ultimateCartData, isLoading }) => {
               </p>
             </div>
 
-            {/* אסטרטגיה 2: שביל הזהב */}
             {ultimateCartData.twoStops ? (
               <div
                 style={{
@@ -179,7 +177,6 @@ const SmartSplitModal = ({ isOpen, onClose, ultimateCartData, isLoading }) => {
               </div>
             )}
 
-            {/* אסטרטגיה 3: אקסטרים */}
             {ultimateCartData.extreme ? (
               <div
                 style={{

@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import "./LandingPage.css";
 
 export default function LandingPage({ onLoginClick }) {
-  // הגדרות אנימציה (Framer Motion)
   const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
     visible: {
@@ -25,7 +24,6 @@ export default function LandingPage({ onLoginClick }) {
 
   return (
     <div className="landing-container">
-      {/* אורות רקע מעוצבים */}
       <div className="ambient-glow glow-1"></div>
       <div className="ambient-glow glow-2"></div>
       <div className="ambient-glow glow-3"></div>
@@ -91,7 +89,6 @@ export default function LandingPage({ onLoginClick }) {
             animate={{ y: [0, -15, 0] }}
             transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
           >
-            {/* הדמיה של הממשק (Glassmorphism) */}
             <div className="glass-mockup">
               <div className="mockup-header">
                 <div className="mockup-title">רשימת קניות</div>

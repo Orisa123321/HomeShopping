@@ -27,11 +27,9 @@ body {
   min-height: 100vh;
 }
 
-/* src/App.css - בסביבות שורה 30-40 */
 .app-container {
   width: 100%;
   max-width: 500px;
-  /* ברירת מחדל לטלפון */
   min-height: 100vh;
   margin: 0 auto;
   padding: 16px;
@@ -161,13 +159,12 @@ body {
   height: max-content;
 }
 
-/* במצב מכווץ (ברירת מחדל) - השם ייקטע בצורה יפה עם שלוש נקודות (...) */
 .compact .item-name {
   white-space: nowrap !important;
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
-  max-width: 180px; /* ניתן לשנות את הרוחב המקסימלי בהתאם לעיצוב */
+  max-width: 180px;
 }
 
 .item-note {
@@ -691,12 +688,10 @@ body {
   overflow: hidden;
 }
 
-/* כותרות הקטגוריות יתפסו שורה שלמה */
 .category-header {
   grid-column: 1 / -1;
 }
 
-/* התאמת דאשבורד התקציב */
 .stats-dashboard {
   display: grid;
   grid-template-columns: 1fr 2fr;
@@ -847,7 +842,6 @@ body {
   margin-bottom: 8px;
 }
 
-/* שורה ראשונה - טקסט וקטגוריה */
 .form-inputs-row {
   display: flex;
   gap: 8px;
@@ -865,7 +859,6 @@ body {
   font-family: inherit;
 }
 
-/* שורת הכפתורים החכמים למטה */
 .form-actions-row {
   display: flex;
   gap: 8px;
@@ -899,10 +892,8 @@ body {
   align-items: center;
   justify-content: center;
   flex: 1;
-  /* כפתור הפלוס יתפוס את שאר המקום */
 }
 
-/* עיצוב אשף הקניות החכם */
 .chip-btn {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -960,30 +951,26 @@ body {
   flex-direction: row !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  /* זה הקסם שמונע מהתיבה לפרוץ החוצה! */
   justify-content: space-between !important;
   align-items: center !important;
   background: var(--bg);
   padding: 6px !important;
   border-radius: 12px;
   flex-wrap: wrap !important;
-  /* אם ממש צפוף - יוריד את הפח שורה במקום לצאת החוצה */
 }
 
 /* =========================================
-   Toast Notifications (במקום Alert)
+   Toast Notifications
 ========================================= */
 
 .toast.success {
   background: #10b981;
 }
 
-/* ירוק מודרני */
 .toast.error {
   background: #ef4444;
 }
 
-/* אדום מודרני */
 .toast.info {
   background: #3b82f6;
 }
@@ -1008,7 +995,7 @@ body {
 }
 
 /* =========================================
-   Bottom Sheet (במקום Prompt)
+   Bottom Sheet
 ========================================= */
 .bottom-sheet-overlay {
   position: fixed;
@@ -1117,7 +1104,6 @@ body {
   color: #ffffff;
 }
 
-/* תמיכה במצב כהה - Dark Mode (אופציונלי) */
 @media (prefers-color-scheme: dark) {
   .bottom-sheet {
     background: #1f2937;
@@ -1140,12 +1126,11 @@ body {
 }
 
 /* =========================================
-   Toast Notifications - מופיע למעלה
+   Toast Notifications
 ========================================= */
 .toast-container {
   position: fixed;
   top: 20px;
-  /* שינינו מ-bottom ל-top */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -1170,7 +1155,6 @@ body {
   text-align: center;
   opacity: 0;
   transform: translateY(-20px);
-  /* מינוס 20 כדי שיחליק מלמעלה למטה */
   animation: slideDownFade 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
@@ -1178,7 +1162,6 @@ body {
   animation: fadeOutUp 0.3s ease-in forwards;
 }
 
-/* אנימציות מעודכנות להחלקה מלמעלה */
 @keyframes slideDownFade {
   to {
     opacity: 1;
@@ -1197,10 +1180,8 @@ body {
     transform: translateY(-20px);
   }
 
-  /* נעלם בחזרה למעלה */
 }
 
-/* === סגנונות מיוחדים למזווה החכם === */
 .modern-pantry {
   font-family: "Assistant", sans-serif;
   display: flex;
@@ -1964,10 +1945,9 @@ body {
 }
 
 /* =========================================
-   🔥 עיצוב מחדש — Radical Redesign
+   Radical Redesign
 ========================================= */
 
-/* --- משתנים חדשים --- */
 :root {
   --primary: #7c3aed;
   --primary-light: #a78bfa;
@@ -1989,7 +1969,6 @@ body {
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* --- Header רזה --- */
 .user-header {
   display: flex;
   justify-content: space-between;
@@ -2028,7 +2007,6 @@ body {
   transform: scale(0.9);
 }
 
-/* --- ניווט תחתון צף --- */
 .bottom-nav {
   position: fixed;
   bottom: 16px;
@@ -2115,7 +2093,6 @@ body {
   border-color: var(--primary);
 }
 
-/* --- FAB כפתור הוספה צף --- */
 .fab-add {
   position: fixed;
   bottom: 80px;
@@ -2141,7 +2118,6 @@ body {
   transform: translateX(-50%) scale(0.9);
 }
 
-/* --- Dashboard דף הבית --- */
 .dashboard {
   display: flex;
   flex-direction: column;
@@ -2181,7 +2157,6 @@ body {
   object-fit: cover;
 }
 
-/* כרטיס התקדמות */
 .progress-card {
   background: var(--card);
   border-radius: 20px;
@@ -2257,7 +2232,6 @@ body {
   font-weight: 700;
 }
 
-/* כותרות סקציה */
 .section-title {
   font-size: 16px;
   font-weight: 800;
@@ -2266,7 +2240,6 @@ body {
   color: var(--text);
 }
 
-/* קיצורים חכמים */
 .quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -2303,7 +2276,6 @@ body {
   text-align: center;
 }
 
-/* משפחה מחוברת */
 .family-online-card {
   display: flex;
   align-items: center;
@@ -2419,7 +2391,6 @@ body {
   background: var(--border);
 }
 
-/* --- אנימציות גלובליות --- */
 .online-indicator {
   animation: pulse 2s ease-in-out infinite;
 }
@@ -2504,7 +2475,6 @@ body {
   box-sizing: border-box;
   position: relative;
 
-  /* מונע מהכרטיסיות האחרות בשורה להימתח ולהציג שטח לבן ריק */
   height: max-content;
 }
 
@@ -2523,20 +2493,18 @@ body {
   min-width: 0;
 }
 
-/* כשהכרטיס מורחב, נאפשר לשם לרדת שורה בצורה יפה מבלי לשבור מילים באמצע */
 .expanded .item-name {
   white-space: normal !important;
-  word-break: keep-all; /* שומר על מילים שלמות */
+  word-break: keep-all;
   word-wrap: break-word;
 }
 
-/* --- התאמת הכרטיס המכווץ לרוחב צר (לפחות 4 בשורה) --- */
 .item-card.compact {
-  padding: 8px 10px !important; /* ריפוד קומפקטי */
+  padding: 8px 10px !important;
 }
 
 .item-card.compact .item-compact-row {
-  gap: 6px !important; /* צמצום רווחים */
+  gap: 6px !important;
 }
 
 .item-card.compact .item-cat-icon {
@@ -2555,7 +2523,6 @@ body {
   font-size: 10px !important;
 }
 
-/* --- אפקט הובר לכרטיסיה פתוחה (סימון שניתן לסגור בלחיצה) --- */
 .item-card.expanded {
   cursor: pointer;
   transition:
@@ -2567,10 +2534,9 @@ body {
 .item-card.expanded:hover {
   border-color: var(--primary-light) !important;
   box-shadow: 0 8px 24px var(--primary-glow) !important;
-  background-color: var(--bg) !important; /* שינוי רקע קל כדי לתת תחושת כפתור */
+  background-color: var(--bg) !important;
 }
 
-/* הוספת אייקון סגירה קטן בריחוף מעל כרטיס פתוח כדי להסביר את הפעולה (חוויית משתמש מדהימה) */
 .item-card.expanded:hover::after {
   position: absolute;
   top: 8px;
@@ -2586,11 +2552,10 @@ body {
   .app-container {
     max-width: 94% !important;
     width: 1200px !important;
-    padding: 24px 24px 180px 24px !important; /* <-- עליון, צדדים, ותחתון נדיב */
+    padding: 24px 24px 180px 24px !important;
   }
 }
 
-/* אפקט הובר עדין המראה שניתן ללחוץ על השורה הראשית של כרטיס פתוח כדי לסגור אותו */
 .expanded .item-compact-row:hover {
   background-color: var(--border) !important;
   border-radius: 8px;
@@ -2607,5 +2572,4 @@ html {
 #root {
   width: 100%;
   margin: 0 auto;
-  /* תמחק מפה שורות כמו max-width: 1280px; או padding: 2rem; אם יש */
 }

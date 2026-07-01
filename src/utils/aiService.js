@@ -1,17 +1,14 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { showToast } from "./helpers.js";
 
-// שליפת מפתחות API
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-// אתחול Gemini במידה וקיים מפתח
 export const genAI = GEMINI_API_KEY
   ? new GoogleGenerativeAI(GEMINI_API_KEY)
   : null;
 
 /**
- * פונקציית עזר לחילוץ ופירסום אמין של JSON מטקסט ה-AI
  */
 function parseJsonSafely(text) {
   try {
@@ -29,13 +26,11 @@ function parseJsonSafely(text) {
 }
 
 /**
- * מנגנון גיבוי היררכי עבור קריאות טקסט (Gemini -> Groq -> Local Fallback)
  */
-let geminiDisabledUntil = 0; // timestamp שאחריו ננסה Gemini שוב
+let geminiDisabledUntil = 0;
 
 async function callTextAiWithFallback(prompt, expectJson, localFallbackFn) {
   const now = Date.now();
-  // --- שלב 1: ניסיון עם GEMINI (רק אם לא חסום זמנית) ---
   if (genAI && now > geminiDisabledUntil) {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -44,14 +39,13 @@ async function callTextAiWithFallback(prompt, expectJson, localFallbackFn) {
       return expectJson ? parseJsonSafely(responseText) : responseText;
     } catch (geminiError) {
       console.warn("Gemini failed, disabling for 5 minutes...", geminiError);
-      geminiDisabledUntil = now + 5 * 60 * 1000; // חסום ל-5 דקות
+      geminiDisabledUntil = now + 5 * 60 * 1000;
       if (GROQ_API_KEY) {
         showToast("מכסת Gemini הסתיימה. עובר ל-Groq AI רזרבי! 🔄", "info");
       }
     }
   }
 
-  // --- שלב 2: ניסיון עם GROQ ---
   if (GROQ_API_KEY) {
     try {
       const body = {
@@ -91,20 +85,17 @@ async function callTextAiWithFallback(prompt, expectJson, localFallbackFn) {
       showToast("שרתי ה-AI עמוסים. מפעיל עוזר קול קומי מקומי! 🧠", "info");
     }
   } else if (genAI) {
-    // אם Gemini נכשל ואין מפתח Groq בכלל
     showToast("שרת ה-AI אינו זמין. מפעיל עוזר מקומי חלופי! 🧠", "info");
   }
 
-  // --- שלב 3: הפעלת ה-FALLBACK המקומי (ללא תלות ברשת) ---
   return localFallbackFn();
 }
 
 /* ==========================================
-   הגדרת הפונקציות הציבוריות עבור האפליקציה
+   Public API Functions
    ========================================== */
 
 /**
- * 1. יצירת מתכון ממצרכים או קישור
  */
 export const getAiRecipe = async (inputData, isUrl = false) => {
   let prompt = "";
@@ -125,7 +116,6 @@ export const getAiRecipe = async (inputData, isUrl = false) => {
     "time": זמן הכנה מוערך`;
   }
 
-  // לוגיקת נסיגה מקומית עבור מתכונים
   const localRecipeFallback = () => {
     if (isUrl) {
       return {
@@ -188,7 +178,6 @@ export const getAiRecipe = async (inputData, isUrl = false) => {
 };
 
 /**
- * 2. ניתוח תזונתי של העגלה
  */
 export const getCartNutrition = async (itemsList) => {
   const itemsString = itemsList
@@ -203,7 +192,6 @@ export const getCartNutrition = async (itemsList) => {
   "summary": משפט סיכום קצר וקולע (עד 15 מילים) על בריאות הסל,
   "tip": טיפ אחד קצר לשיפור הבריאות של הסל הזה ספציפית.`;
 
-  // לוגיקת נסיגה מקומית עבור ניתוח תזונתי
   const localNutritionFallback = () => {
     let totalCalories = 0;
     let totalProtein = 0;
@@ -304,14 +292,11 @@ export const getCartNutrition = async (itemsList) => {
 };
 
 /**
- * 3. מתכון "הצלת מזון" מהמזווה
  */
 
 /**
- * 3. מתכון "הצלת מזון" מהמזווה
  */
 export const getRescueRecipe = async (expiringItems) => {
-  // הגדרת הפרומפט מחוץ ללוגיקת הגיבוי כדי שיהיה זמין
   const prompt = `
     אתה שף מומחה ב"הצלת מזון" (Zero Waste).
     במזווה של המשתמש יש את המצרכים הבאים שעומדים לפוג תוקף ממש בקרוב: ${expiringItems.join(", ")}.
@@ -353,7 +338,6 @@ export const getRescueRecipe = async (expiringItems) => {
 };
 
 /**
- * 4. בניית רשימת קניות ותפריט שבועי חכם
  */
 export const getSmartGroceryList = async (answers) => {
   const prompt = `
@@ -384,7 +368,6 @@ export const getSmartGroceryList = async (answers) => {
     }
   `;
 
-  // לוגיקת נסיגה מקומית עבור תכנון קניות שבועי
   const localSmartListFallback = () => {
     const adultCount = parseInt(answers.adults) || 2;
     const kidCount = parseInt(answers.kids) || 0;
@@ -517,7 +500,6 @@ export const getSmartGroceryList = async (answers) => {
 };
 
 /**
- * 5. סריקת קבלה חכמה (Gemini Vision -> Groq Vision -> Error message)
  */
 export const getReceiptScan = async (base64data, mimeType) => {
   const prompt = `
@@ -535,7 +517,6 @@ export const getReceiptScan = async (base64data, mimeType) => {
 
   const now = Date.now();
 
-  // --- שלב 1: ניסיון עם GEMINI (מולטימודל) ---
   if (genAI && now > geminiDisabledUntil) {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -543,7 +524,6 @@ export const getReceiptScan = async (base64data, mimeType) => {
         inlineData: { data: base64data, mimeType },
       };
 
-      // שליחת הפרומפט יחד עם חלקי התמונה כראוי
       const result = await model.generateContent([prompt, imagePart]);
       const responseText = await result.response.text();
       return parseJsonSafely(responseText);
@@ -552,14 +532,13 @@ export const getReceiptScan = async (base64data, mimeType) => {
         "Gemini Vision failed, disabling for 5 minutes...",
         geminiError,
       );
-      geminiDisabledUntil = now + 5 * 60 * 1000; // חסום ל-5 דקות
+      geminiDisabledUntil = now + 5 * 60 * 1000;
       if (GROQ_API_KEY) {
         showToast("מכסת Gemini הסתיימה. עובר ל-Groq Vision רזרבי! 📸", "info");
       }
     }
   }
 
-  // --- שלב 2: ניסיון עם GROQ (מולטימודל LLaMA 3.2) ---
   if (GROQ_API_KEY) {
     try {
       const response = await fetch(
@@ -603,7 +582,6 @@ export const getReceiptScan = async (base64data, mimeType) => {
     }
   }
 
-  // --- שלב 3: כשלון מוחלט (תצוגת הודעת נפילה חיננית ללא קריסה) ---
   showToast(
     "שירות סריקת הקבלות ב-AI לא זמין כרגע. אנא הזן את המוצרים ידנית.",
     "error",
@@ -612,10 +590,8 @@ export const getReceiptScan = async (base64data, mimeType) => {
 };
 
 /**
- * 6. סידור קטגוריות חכם (AI)
  */
 export const getAiCategorization = async (itemsList) => {
-  // שולחים ל-AI רק את השמות כדי לחסוך טוקנים
   const itemsString = itemsList.map((i) => i.name).join(", ");
 
   const prompt = `
@@ -630,17 +606,14 @@ export const getAiCategorization = async (itemsList) => {
     }
   `;
 
-  // גיבוי אופליין קליל - פשוט מחזיר מערך ריק ואנחנו נטפל בזה באפליקציה ונשתמש בפונקציה הרגילה guessCategory
   const localFallback = () => ({ categorizedItems: [] });
 
   return callTextAiWithFallback(prompt, true, localFallback);
 };
 
 /**
- * 7. איחוד כפילויות חכם (AI)
  */
 export const getAiMergeSuggestions = async (itemsList) => {
-  // שולחים מזהים ושמות כדי שה-AI יגיד לנו את מי לאחד
   const itemsString = itemsList
     .map((i) => `{id: "${i.id}", name: "${i.name}"}`)
     .join(", ");
@@ -658,7 +631,6 @@ export const getAiMergeSuggestions = async (itemsList) => {
     }
   `;
 
-  // גיבוי אופליין - כרגע נחזיר ריק (קשה לזהות כפילויות חכמות אופליין בלי אלגוריתם מורכב)
   const localFallback = () => ({ merges: [] });
 
   return callTextAiWithFallback(prompt, true, localFallback);

@@ -1,19 +1,16 @@
 // src/components/SwipeableItemWrapper.tsx
 import React, { useRef } from "react";
-// 1. ייבוא PanInfo מ-framer-motion כדי שהפונקציה שלנו תדע איזה סוג מידע חוזר מהגרירה
 import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import "./SwipeableItem.css";
 
-// 2. הגדרת הממשק (Interface) - אומר ל-React בדיוק איזה Props הקומפוננטה מקבלת
 interface SwipeableItemWrapperProps {
-  children: React.ReactNode; // טיפוס סטנדרטי ב-React עבור אלמנטים פנימיים
-  onDelete: () => void; // פונקציה שלא מקבלת כלום ולא מחזירה כלום
+  children: React.ReactNode;
+  onDelete: () => void;
   onMarkBought: () => void;
   onOpenActions: () => void;
-  isBought: boolean; // משתנה בוליאני פשוט
+  isBought: boolean;
 }
 
-// 3. הוספת הממשק שלנו לשורת ההגדרה של הקומפוננטה
 export function SwipeableItemWrapper({
   children,
   onDelete,
@@ -21,7 +18,6 @@ export function SwipeableItemWrapper({
   onOpenActions,
   isBought,
 }: SwipeableItemWrapperProps) {
-  // 4. הגדרת סוג הרפרנס (HTMLDivElement) כדי שנדע שזה אלמנט דיב
   const containerRef = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
 
@@ -35,7 +31,6 @@ export function SwipeableItemWrapper({
     ],
   );
 
-  // 5. הגדרת הטיפוסים של האירוע ושל נתוני הגרירה (info מצופה להיות מסוג PanInfo)
   const handleDragEnd = (
     event: MouseEvent | TouchEvent | PointerEvent,
     info: PanInfo,
